@@ -74,22 +74,38 @@ export function createHub(store, { channelName = "room-events" } = {}) {
         subscribers = new Set();
         local.set(roomId, subscribers);
       }
-      subscribers.add(onEvent);
+
+      // Added before the replay read below (not after), so a publish that
+      // lands while that read is in flight is never missed. That ordering
+      // creates its own race, tracked here: if a live "state" event is
+      // delivered to this subscriber while the read is still pending, it is
+      // already at least as new as whatever the read eventually returns (the
+      // read started after that publish had already persisted its state), so
+      // the stale replay must be skipped rather than delivered after it and
+      // walking the display back to an older screen.
+      let liveStateDelivered = false;
+      const deliver = (name, data) => {
+        if (name === "state") liveStateDelivered = true;
+        onEvent(name, data);
+      };
+      subscribers.add(deliver);
 
       // Replay on connect. SSE reconnects automatically, but a push-only server
       // would deliver nothing on reconnect and leave a blank screen in front of a
       // customer who is mid-scan.
       const current = await store.getCurrent(roomId);
-      try {
-        onEvent("state", render(current));
-      } catch {
-        // Ignore: the caller's stream is already gone.
+      if (!liveStateDelivered) {
+        try {
+          onEvent("state", render(current));
+        } catch {
+          // Ignore: the caller's stream is already gone.
+        }
       }
 
       return () => {
         const set = local.get(roomId);
         if (!set) return;
-        set.delete(onEvent);
+        set.delete(deliver);
         if (set.size === 0) local.delete(roomId);
       };
     },

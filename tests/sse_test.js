@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { withServer } from "./helpers.js";
 
 /** Read SSE frames from a Response until `count` `data:` lines have arrived. */
@@ -141,5 +141,47 @@ Deno.test("a published charge reaches an open stream", async () => {
     const events = await pending;
     assertEquals(events[1].data.orderNo, 3);
     assertEquals(events[1].data.svg.startsWith("<svg"), true);
+  });
+});
+
+Deno.test("a rejecting presence call during start() errors the stream and unsubscribes from the hub", async () => {
+  await withServer(async ({ call, handler, store, hub }) => {
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const { ticket } = await (await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
+      token: operatorToken,
+    })).json();
+
+    // Fail the operator's post-subscribe presence count, so start() rejects
+    // after hub.subscribe has already succeeded — the exact ordering the
+    // review flagged as leaving a zombie, still-subscribed stream.
+    store.countPresence = () => Promise.reject(new Error("kv boom"));
+
+    // Wrap hub.subscribe to observe whether the route actually calls the
+    // unsubscribe function it was handed, without reaching into the hub's
+    // private subscriber set.
+    let unsubscribeCalled = false;
+    const originalSubscribe = hub.subscribe.bind(hub);
+    hub.subscribe = async (id, onEvent) => {
+      const unsubscribe = await originalSubscribe(id, onEvent);
+      return () => {
+        unsubscribeCalled = true;
+        unsubscribe();
+      };
+    };
+
+    const res = await handler(
+      new Request(`http://localhost/api/events?ticket=${ticket}`),
+    );
+    const reader = res.body.getReader();
+
+    // The initial "state" replay is enqueued before the failing presence call
+    // runs, so the first read still succeeds.
+    const first = await reader.read();
+    assertEquals(first.done, false);
+
+    // The failing presence call must then error the stream rather than
+    // leaving it open-but-silent or hanging.
+    await assertRejects(() => reader.read());
+    assertEquals(unsubscribeCalled, true);
   });
 });

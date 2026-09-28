@@ -134,6 +134,46 @@ Deno.test("unsubscribing stops delivery", async () => {
   });
 });
 
+Deno.test("a publish landing during the replay read is not overwritten by the stale replay", async () => {
+  await withHub(async (hub, store) => {
+    const { roomId } = await store.createRoom();
+
+    // Gate store.getCurrent so the test controls exactly when subscribe's
+    // replay read resolves, and can force a publish to land while it is
+    // still in flight.
+    let releaseGate;
+    const gate = new Promise((resolve) => {
+      releaseGate = resolve;
+    });
+    const originalGetCurrent = store.getCurrent.bind(store);
+    store.getCurrent = async (id) => {
+      await gate;
+      return originalGetCurrent(id);
+    };
+
+    const events = [];
+    const subscribePromise = hub.subscribe(
+      roomId,
+      (name, data) => events.push({ name, data }),
+    );
+
+    // subscribe() has already registered the subscriber synchronously above
+    // (before its first await), so this publish is delivered live while the
+    // gated read is still pending.
+    await hub.publish(roomId, CHARGE);
+    releaseGate();
+    const off = await subscribePromise;
+
+    // Only the live charge event should be observed: the now-stale idle
+    // replay must be skipped rather than delivered after it and walking the
+    // subscriber back to an older screen.
+    assertEquals(events.length, 1);
+    assertEquals(events[0].data.state, "charge");
+    assertEquals(events[0].data.orderNo, 7);
+    off();
+  });
+});
+
 Deno.test("a throwing subscriber does not stop the others", async () => {
   await withHub(async (hub, store) => {
     const { roomId } = await store.createRoom();

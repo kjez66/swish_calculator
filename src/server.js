@@ -167,14 +167,25 @@ export function createHandler({ store, hub, now = () => new Date() }) {
 
       let unsubscribe = () => {};
       let heartbeat = 0;
-      // The "a ticket works exactly once" test cancels the stream before
-      // `start()` finishes its first await, which would otherwise leak the
-      // heartbeat interval and try to enqueue onto an already-closed
-      // controller. Every await below re-checks this flag before doing
-      // anything that assumes the stream is still open, and `send` is a
-      // no-op once it is set.
+      // Guards two distinct races, both surfaced by tests that don't let
+      // `start()` run to completion before acting:
+      // - the consumer can cancel before `start()`'s first await settles
+      //   (see "a ticket works exactly once"), which must not leak the
+      //   heartbeat interval or enqueue onto an already-closed controller;
+      // - a KV call inside `start()` or the heartbeat can reject (see "an
+      //   error during start()..."), which must not leave the hub
+      //   subscriber registered forever with no live consumer.
+      // `cleanup()` is the single place that unwinds both: it is idempotent,
+      // so calling it more than once (e.g. cancel() racing an in-flight
+      // error) is harmless. `send` is a no-op once closed.
       let closed = false;
       const encoder = new TextEncoder();
+
+      const cleanup = () => {
+        closed = true;
+        clearInterval(heartbeat);
+        unsubscribe();
+      };
 
       const body = new ReadableStream({
         async start(controller) {
@@ -185,42 +196,51 @@ export function createHandler({ store, hub, now = () => new Date() }) {
             );
           };
 
-          unsubscribe = await hub.subscribe(roomId, send);
-          if (closed) {
-            unsubscribe();
-            return;
-          }
+          try {
+            unsubscribe = await hub.subscribe(roomId, send);
+            if (closed) return cleanup();
 
-          if (role === "display") {
-            await store.touchPresence(roomId, displayId);
-            if (closed) {
-              unsubscribe();
-              return;
+            if (role === "display") {
+              await store.touchPresence(roomId, displayId);
+              if (closed) return cleanup();
             }
-          }
 
-          heartbeat = setInterval(async () => {
-            try {
-              // A comment frame keeps intermediate proxies from closing the stream.
-              controller.enqueue(encoder.encode(": ping\n\n"));
-              if (role === "display") {
-                await store.touchPresence(roomId, displayId);
-              } else {
-                send("presence", { displays: await store.countPresence(roomId) });
+            heartbeat = setInterval(async () => {
+              try {
+                // A comment frame keeps intermediate proxies from closing the stream.
+                controller.enqueue(encoder.encode(": ping\n\n"));
+                if (role === "display") {
+                  await store.touchPresence(roomId, displayId);
+                } else {
+                  send("presence", { displays: await store.countPresence(roomId) });
+                }
+              } catch (err) {
+                // A dead heartbeat must not leave the stream open-but-silent:
+                // the client would sit on a connection whose presence has
+                // stopped updating and that a proxy may eventually drop
+                // without either side noticing. Erroring it makes the
+                // client's EventSource reconnect and get a fresh replay.
+                const wasOpen = !closed;
+                cleanup();
+                if (wasOpen) controller.error(err);
               }
-            } catch {
-              clearInterval(heartbeat);
-            }
-          }, HEARTBEAT_MS);
+            }, HEARTBEAT_MS);
 
-          if (role === "operator") {
-            send("presence", { displays: await store.countPresence(roomId) });
+            if (role === "operator") {
+              send("presence", { displays: await store.countPresence(roomId) });
+            }
+          } catch (err) {
+            // Same reasoning as the heartbeat's catch above: an error here
+            // (e.g. touchPresence/countPresence rejecting) must not leave a
+            // zombie stream subscribed in the hub with no cancel() coming to
+            // unsubscribe it.
+            const wasOpen = !closed;
+            cleanup();
+            if (wasOpen) controller.error(err);
           }
         },
         cancel() {
-          closed = true;
-          clearInterval(heartbeat);
-          unsubscribe();
+          cleanup();
         },
       });
 
