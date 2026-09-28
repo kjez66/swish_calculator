@@ -1,6 +1,9 @@
 /**
- * HTTP routes. `createHandler` returns a plain (Request) => Response so tests can
- * exercise it without binding a port.
+ * HTTP routes. `createHandler` returns a plain (req, info) => Response so
+ * tests can exercise it without binding a port. `info` is the
+ * `Deno.ServeHandlerInfo` that `Deno.serve` passes automatically; tests
+ * construct a lookalike (see tests/helpers.js) to exercise the rate limiter's
+ * trust boundary.
  * @module
  */
 import { serveDir } from "@std/http/file-server";
@@ -28,9 +31,17 @@ function bearer(req) {
   return header.startsWith("Bearer ") ? header.slice(7) : null;
 }
 
-/** @param {Request} req */
-function clientIp(req) {
-  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+/**
+ * Trust boundary: `x-forwarded-for` is client-controllable (a caller can send
+ * any value, and rotate it per request) and must never be used for the
+ * rate-limit key. `info.remoteAddr` comes from the TCP connection itself — on
+ * Deno Deploy that is the real client address — so it is the only source we
+ * trust here. Falls back to "unknown" only when no connection info was
+ * supplied at all (which should not happen outside of a misconfigured test).
+ * @param {Deno.ServeHandlerInfo|undefined} info
+ */
+function clientIp(info) {
+  return info?.remoteAddr?.hostname ?? "unknown";
 }
 
 /**
@@ -57,7 +68,7 @@ export function createHandler({ store, hub, now = () => new Date() }) {
     return { roomId, role };
   }
 
-  return async function handler(req) {
+  return async function handler(req, info) {
     const url = new URL(req.url);
     const path = url.pathname;
 
@@ -67,7 +78,7 @@ export function createHandler({ store, hub, now = () => new Date() }) {
 
     // --- room creation -----------------------------------------------------
     if (path === "/api/rooms" && req.method === "POST") {
-      const ipHash = await hashToken(clientIp(req));
+      const ipHash = await hashToken(clientIp(info));
       if (!await store.underRateLimit("rooms", ipHash, ROOMS_PER_MINUTE, now())) {
         return fail("rate_limited", 429);
       }

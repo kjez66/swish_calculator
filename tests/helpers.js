@@ -12,6 +12,19 @@ import { createHub } from "../src/hub.js";
 import { createHandler } from "../src/server.js";
 
 /**
+ * Default connection info handed to the handler, standing in for what
+ * `Deno.serve` passes as its second argument in production. `x-forwarded-for`
+ * is untrusted (see src/server.js's clientIp), so `call` also sends a default
+ * XFF header — callers can rotate it to prove spoofing it has no effect, and
+ * override `remoteAddr` to prove a genuinely different client is unaffected.
+ * @param {string} hostname
+ * @returns {Deno.ServeHandlerInfo}
+ */
+function connInfo(hostname) {
+  return { remoteAddr: { transport: "tcp", hostname, port: 1234 } };
+}
+
+/**
  * @param {(ctx: {call: Function, store: object, hub: object, handler: Function}) => Promise<void>} fn
  */
 export async function withServer(fn) {
@@ -19,17 +32,22 @@ export async function withServer(fn) {
   const store = createStore(kv);
   const hub = createHub(store, { channelName: `test-${crypto.randomUUID()}` });
   const handler = createHandler({ store, hub });
-  const call = (method, path, { token, body } = {}) =>
+  const call = (
+    method,
+    path,
+    { token, body, xff = "203.0.113.5", remoteAddr = "203.0.113.5" } = {},
+  ) =>
     handler(
       new Request(`http://localhost${path}`, {
         method,
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(body ? { "Content-Type": "application/json" } : {}),
-          "x-forwarded-for": "203.0.113.5",
+          "x-forwarded-for": xff,
         },
         body: body ? JSON.stringify(body) : undefined,
       }),
+      connInfo(remoteAddr),
     );
   try {
     await fn({ call, store, hub, handler });

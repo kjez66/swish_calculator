@@ -18,6 +18,33 @@ Deno.test("room creation is rate limited per client", async () => {
   });
 });
 
+Deno.test("a spoofed x-forwarded-for does not escape the rate limit", async () => {
+  await withServer(async ({ call }) => {
+    // Same remoteAddr (the real client, per Deno.ServeHandlerInfo) on every
+    // call; only the client-controllable XFF header rotates. The limit must
+    // still trip, proving the rate-limit key never trusts XFF.
+    let last;
+    for (let i = 0; i < 12; i++) {
+      last = await call("POST", "/api/rooms", { xff: `10.0.0.${i}` });
+    }
+    assertEquals(last.status, 429);
+  });
+});
+
+Deno.test("a different remoteAddr is not caught by another client's rate limit", async () => {
+  await withServer(async ({ call }) => {
+    let last;
+    for (let i = 0; i < 12; i++) {
+      last = await call("POST", "/api/rooms", { remoteAddr: "198.51.100.9" });
+    }
+    assertEquals(last.status, 429);
+
+    // A genuinely different client (different remoteAddr) still gets through.
+    const res = await call("POST", "/api/rooms", { remoteAddr: "198.51.100.10" });
+    assertEquals(res.status, 200);
+  });
+});
+
 Deno.test("authenticated routes reject a missing or wrong token", async () => {
   await withServer(async ({ call }) => {
     const { roomId } = await (await call("POST", "/api/rooms")).json();
