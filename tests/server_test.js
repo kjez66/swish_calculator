@@ -1,0 +1,94 @@
+import { assertEquals } from "@std/assert";
+import { withServer } from "./helpers.js";
+
+Deno.test("POST /api/rooms issues a room and an operator token", async () => {
+  await withServer(async ({ call, store }) => {
+    const res = await call("POST", "/api/rooms");
+    assertEquals(res.status, 200);
+    const { roomId, operatorToken } = await res.json();
+    assertEquals(await store.authenticate(roomId, operatorToken), "operator");
+  });
+});
+
+Deno.test("room creation is rate limited per client", async () => {
+  await withServer(async ({ call }) => {
+    let last;
+    for (let i = 0; i < 12; i++) last = await call("POST", "/api/rooms");
+    assertEquals(last.status, 429);
+  });
+});
+
+Deno.test("authenticated routes reject a missing or wrong token", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId } = await (await call("POST", "/api/rooms")).json();
+    assertEquals((await call("GET", `/api/state?roomId=${roomId}`)).status, 401);
+    assertEquals(
+      (await call("GET", `/api/state?roomId=${roomId}`, { token: "nope" })).status,
+      401,
+    );
+  });
+});
+
+Deno.test("settings and products round-trip through the API", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const t = { token: operatorToken };
+
+    let res = await call("PUT", `/api/settings?roomId=${roomId}`, {
+      ...t,
+      body: { storeName: "Kaffebaren", payeeNumber: "070-123 45 67" },
+    });
+    assertEquals(res.status, 200);
+
+    const products = [{ id: "a", name: "Kaffe", priceOre: 2500, sortOrder: 0 }];
+    res = await call("PUT", `/api/products?roomId=${roomId}`, { ...t, body: products });
+    assertEquals(res.status, 200);
+
+    res = await call("GET", `/api/state?roomId=${roomId}`, t);
+    const state = await res.json();
+    // The payee is stored normalized, so nothing downstream has to re-parse it.
+    assertEquals(state.settings.payeeNumber, "0701234567");
+    assertEquals(state.products, products);
+  });
+});
+
+Deno.test("PUT /api/settings rejects an unpayable number", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const res = await call("PUT", `/api/settings?roomId=${roomId}`, {
+      token: operatorToken,
+      body: { storeName: "X", payeeNumber: "0801234567" },
+    });
+    assertEquals(res.status, 400);
+    assertEquals((await res.json()).error, "invalid_payee");
+  });
+});
+
+Deno.test("PUT /api/products validates its input", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const t = { token: operatorToken };
+    const bad = [
+      [{ id: "a", name: "", priceOre: 100, sortOrder: 0 }],
+      [{ id: "a", name: "Kaffe", priceOre: -5, sortOrder: 0 }],
+      [{ id: "a", name: "Kaffe", priceOre: 1.5, sortOrder: 0 }],
+      [{ id: "a", name: "Kaffe", priceOre: 100, sortOrder: 0 }, {
+        id: "a",
+        name: "Te",
+        priceOre: 200,
+        sortOrder: 1,
+      }],
+      "not an array",
+    ];
+    for (const body of bad) {
+      const res = await call("PUT", `/api/products?roomId=${roomId}`, { ...t, body });
+      assertEquals(res.status, 400);
+    }
+  });
+});
+
+Deno.test("unknown API routes 404", async () => {
+  await withServer(async ({ call }) => {
+    assertEquals((await call("GET", "/api/nope")).status, 404);
+  });
+});
