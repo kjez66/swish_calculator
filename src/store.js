@@ -30,8 +30,12 @@ export function stockholmDate(date) {
 
 /**
  * @param {Deno.Kv} kv
+ * @param {{randomPairCode?: () => string}} [deps] Test-only seam: lets a test
+ *   inject a deterministic code generator to exercise createPairCode's
+ *   collision retry without seeding the full 10^6-value space. Callers other
+ *   than tests should call `createStore(kv)` and get the real generator.
  */
-export function createStore(kv) {
+export function createStore(kv, { randomPairCode: drawPairCode = randomPairCode } = {}) {
   /**
    * @param {string} roomId
    * @returns {Promise<{createdAt:number, operatorTokenHash:string, displayTokenHashes:string[]}|null>}
@@ -184,10 +188,23 @@ export function createStore(kv) {
       return response;
     },
 
+    /**
+     * Draws a fresh code and claims it under a versionstamp check so a
+     * still-live code from another room is never overwritten. With 10^6
+     * possible codes a collision is rare but not negligible, and overwriting
+     * a live code would let that code's eventual claimant end up paired to
+     * the wrong room's payment stream. Retries with a new draw on conflict.
+     */
     async createPairCode(roomId) {
-      const code = randomPairCode();
-      await kv.set(["pair", code], { roomId }, { expireIn: PAIR_CODE_TTL_MS });
-      return code;
+      while (true) {
+        const code = drawPairCode();
+        const key = ["pair", code];
+        const claim = await kv.atomic()
+          .check({ key, versionstamp: null })
+          .set(key, { roomId }, { expireIn: PAIR_CODE_TTL_MS })
+          .commit();
+        if (claim.ok) return code;
+      }
     },
 
     /**

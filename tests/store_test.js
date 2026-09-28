@@ -10,6 +10,14 @@ async function withStore(fn) {
   }
 }
 
+// createStore's second, optional argument is a test-only seam (see its
+// JSDoc): it lets a test inject a deterministic pair-code generator so the
+// collision-retry path can be exercised without seeding the full 10^6-value
+// code space.
+function createStoreForTest(kv, randomPairCode) {
+  return createStore(kv, { randomPairCode });
+}
+
 Deno.test("createRoom issues a room and an operator token that authenticates", async () => {
   await withStore(async (store) => {
     const { roomId, operatorToken } = await store.createRoom();
@@ -174,6 +182,33 @@ Deno.test("pair codes are single-use and yield a working display token", async (
     // Single use: a shoulder-surfed code is worth nothing once claimed.
     assertEquals(await store.claimPairCode(code), null);
     assertEquals(await store.claimPairCode("000000"), null);
+  });
+});
+
+Deno.test("createPairCode never overwrites a live code from another room, and retries", async () => {
+  await withStore(async (store, kv) => {
+    const { roomId: otherRoomId } = await store.createRoom();
+    // Pre-seed a live code as if it had just been issued to another room and
+    // not yet claimed.
+    await kv.set(["pair", "123456"], { roomId: otherRoomId }, { expireIn: 5 * 60_000 });
+
+    const { roomId } = await store.createRoom();
+    // Inject a deterministic generator: draw the colliding code twice (so the
+    // retry loop must actually run more than once), then a free one.
+    const draws = ["123456", "123456", "654321"];
+    let calls = 0;
+    const storeWithStubbedDraw = createStoreForTest(kv, () => draws[calls++]);
+
+    const code = await storeWithStubbedDraw.createPairCode(roomId);
+
+    assertEquals(calls, 3);
+    assertEquals(code, "654321");
+    // The colliding code still belongs to the other room, untouched.
+    const stillOthers = await kv.get(["pair", "123456"]);
+    assertEquals(stillOthers.value, { roomId: otherRoomId });
+    // The fresh code is claimable and resolves to the right room.
+    const claimed = await store.claimPairCode("654321");
+    assertEquals(claimed?.roomId, roomId);
   });
 });
 
