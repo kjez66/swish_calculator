@@ -11,6 +11,7 @@ const PAIR_CODE_TTL_MS = 5 * 60_000;
 const CHARGE_RECORD_TTL_MS = 120_000;
 const PRESENCE_TTL_MS = 30_000;
 const RATE_WINDOW_TTL_MS = 120_000;
+const TICKET_TTL_MS = 30_000;
 
 /**
  * The order counter must roll over at Stockholm midnight. UTC rolls over at 01:00
@@ -243,6 +244,29 @@ export function createStore(kv, { randomPairCode: drawPairCode = randomPairCode 
         if (updated.ok) break;
       }
       return { roomId, displayToken };
+    },
+
+    /**
+     * EventSource cannot set headers, so a token would otherwise end up in a URL
+     * where proxy and server logs capture it. A 30-second single-use ticket is
+     * exchanged over a normal POST instead.
+     */
+    async createTicket(roomId, role) {
+      const ticket = randomToken();
+      await kv.set(["ticket", ticket], { roomId, role }, { expireIn: TICKET_TTL_MS });
+      return ticket;
+    },
+
+    async claimTicket(ticket) {
+      if (!ticket) return null;
+      const key = ["ticket", ticket];
+      const entry = await kv.get(key);
+      if (!entry.value) return null;
+      const consumed = await kv.atomic()
+        .check({ key, versionstamp: entry.versionstamp })
+        .delete(key)
+        .commit();
+      return consumed.ok ? entry.value : null;
     },
 
     async touchPresence(roomId, displayId) {

@@ -223,6 +223,17 @@ Deno.test("presence counts distinct displays", async () => {
   });
 });
 
+Deno.test("stream tickets are single-use and carry a role", async () => {
+  await withStore(async (store) => {
+    const { roomId } = await store.createRoom();
+    const ticket = await store.createTicket(roomId, "display");
+    assertEquals(await store.claimTicket(ticket), { roomId, role: "display" });
+    // Single use: the ticket appears in a URL, so it must be worthless once used.
+    assertEquals(await store.claimTicket(ticket), null);
+    assertEquals(await store.claimTicket("garbage"), null);
+  });
+});
+
 Deno.test("rate limiting counts per scope, per client, per minute", async () => {
   await withStore(async (store) => {
     const t = new Date("2026-09-13T10:00:00Z");

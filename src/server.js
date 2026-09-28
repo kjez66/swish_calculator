@@ -11,6 +11,8 @@ import { normalizePayee } from "../public/shared/swish.js";
 import { hashToken } from "./tokens.js";
 
 const ROOMS_PER_MINUTE = 10;
+const PAIR_CLAIMS_PER_MINUTE = 20;
+const HEARTBEAT_MS = 15_000;
 
 /** @param {object} body @param {number} [status] */
 function json(body, status = 200) {
@@ -49,9 +51,6 @@ function clientIp(info) {
  *          hub: ReturnType<import("./hub.js").createHub>,
  *          now?: () => Date}} deps
  */
-// hub is wired through now so Task 8/9 (charge, SSE stream) can add routes
-// that use it without changing this signature.
-// deno-lint-ignore no-unused-vars
 export function createHandler({ store, hub, now = () => new Date() }) {
   /**
    * @param {Request} req
@@ -132,6 +131,107 @@ export function createHandler({ store, hub, now = () => new Date() }) {
       }
       await store.setProducts(auth.roomId, body);
       return json({ ok: true });
+    }
+
+    // --- pairing -----------------------------------------------------------
+    if (path === "/api/pair" && req.method === "POST") {
+      const auth = await authorize(req, url, "operator");
+      if (!auth) return fail("unauthorized", 401);
+      return json({ code: await store.createPairCode(auth.roomId) });
+    }
+
+    if (path === "/api/pair/claim" && req.method === "POST") {
+      const ipHash = await hashToken(clientIp(info));
+      // Rate limiting here is what keeps a 6-digit code from being brute-forced.
+      if (!await store.underRateLimit("pair", ipHash, PAIR_CLAIMS_PER_MINUTE, now())) {
+        return fail("rate_limited", 429);
+      }
+      const body = await req.json().catch(() => null);
+      const claimed = await store.claimPairCode(String(body?.code ?? ""));
+      if (!claimed) return fail("invalid_code", 404);
+      return json(claimed);
+    }
+
+    // --- streaming ---------------------------------------------------------
+    if (path === "/api/stream-ticket" && req.method === "POST") {
+      const auth = await authorize(req, url, "any");
+      if (!auth) return fail("unauthorized", 401);
+      return json({ ticket: await store.createTicket(auth.roomId, auth.role) });
+    }
+
+    if (path === "/api/events" && req.method === "GET") {
+      const claimed = await store.claimTicket(url.searchParams.get("ticket"));
+      if (!claimed) return fail("unauthorized", 401);
+      const { roomId, role } = claimed;
+      const displayId = crypto.randomUUID();
+
+      let unsubscribe = () => {};
+      let heartbeat = 0;
+      // The "a ticket works exactly once" test cancels the stream before
+      // `start()` finishes its first await, which would otherwise leak the
+      // heartbeat interval and try to enqueue onto an already-closed
+      // controller. Every await below re-checks this flag before doing
+      // anything that assumes the stream is still open, and `send` is a
+      // no-op once it is set.
+      let closed = false;
+      const encoder = new TextEncoder();
+
+      const body = new ReadableStream({
+        async start(controller) {
+          const send = (name, data) => {
+            if (closed) return;
+            controller.enqueue(
+              encoder.encode(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`),
+            );
+          };
+
+          unsubscribe = await hub.subscribe(roomId, send);
+          if (closed) {
+            unsubscribe();
+            return;
+          }
+
+          if (role === "display") {
+            await store.touchPresence(roomId, displayId);
+            if (closed) {
+              unsubscribe();
+              return;
+            }
+          }
+
+          heartbeat = setInterval(async () => {
+            try {
+              // A comment frame keeps intermediate proxies from closing the stream.
+              controller.enqueue(encoder.encode(": ping\n\n"));
+              if (role === "display") {
+                await store.touchPresence(roomId, displayId);
+              } else {
+                send("presence", { displays: await store.countPresence(roomId) });
+              }
+            } catch {
+              clearInterval(heartbeat);
+            }
+          }, HEARTBEAT_MS);
+
+          if (role === "operator") {
+            send("presence", { displays: await store.countPresence(roomId) });
+          }
+        },
+        cancel() {
+          closed = true;
+          clearInterval(heartbeat);
+          unsubscribe();
+        },
+      });
+
+      return new Response(body, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
     }
 
     return fail("not_found", 404);
