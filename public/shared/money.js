@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Money handling. All amounts are integer öre; floating point never touches a
  * price or a total. Shared verbatim between the browser and the server so the
  * running total on screen and the authoritative total on the server cannot drift.
@@ -33,14 +33,14 @@ export function parseKronorToOre(input) {
 /**
  * Swedish display form: comma decimals, non-breaking-space thousands.
  * @param {number} ore
- * @returns {string} e.g. "1 500,00"
+ * @returns {string} e.g. "1\u00A0500,00" (with U+00A0 as the thousands separator)
  */
 export function formatOre(ore) {
   const sign = ore < 0 ? "-" : "";
   const abs = Math.abs(Math.trunc(ore));
   const kronor = String(Math.floor(abs / 100));
   const decimals = String(abs % 100).padStart(2, "0");
-  const grouped = kronor.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const grouped = kronor.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0");
   return `${sign}${grouped},${decimals}`;
 }
 

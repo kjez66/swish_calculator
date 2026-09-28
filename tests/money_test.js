@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "@std/assert";
+﻿import { assertEquals, assertThrows } from "@std/assert";
 import {
   basketTotalOre,
   formatOre,
@@ -25,8 +25,8 @@ Deno.test("formatOre renders Swedish display form", () => {
   assertEquals(formatOre(1990), "19,90");
   assertEquals(formatOre(5), "0,05");
   assertEquals(formatOre(0), "0,00");
-  assertEquals(formatOre(150000), "1 500,00");
-  assertEquals(formatOre(123456789), "1 234 567,89");
+  assertEquals(formatOre(150000), "1\u00A0500,00");
+  assertEquals(formatOre(123456789), "1\u00A0234\u00A0567,89");
 });
 
 Deno.test("formatOreForSwish always has two decimals and a dot", () => {
