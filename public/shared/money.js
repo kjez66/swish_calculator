@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Money handling. All amounts are integer öre; floating point never touches a
  * price or a total. Shared verbatim between the browser and the server so the
  * running total on screen and the authoritative total on the server cannot drift.
