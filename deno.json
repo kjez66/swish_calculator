@@ -1,0 +1,15 @@
+{
+  "unstable": ["kv"],
+  "tasks": {
+    "dev": "deno run -A --watch main.js",
+    "start": "deno run -A main.js",
+    "test": "deno test -A"
+  },
+  "imports": {
+    "qrcode-generator": "npm:qrcode-generator@1.4.4",
+    "jsqr": "npm:jsqr@1.4.0",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/http/file-server": "jsr:@std/http@1/file-server"
+  },
+  "fmt": { "indentWidth": 2, "lineWidth": 90 }
+}
