@@ -1,0 +1,115 @@
+/**
+ * SSE fan-out across Deno Deploy isolates.
+ *
+ * Deno Deploy runs many isolates. The operator's POST and the display's open SSE
+ * stream routinely land on different ones, so a purely in-process subscriber
+ * registry delivers to the wrong isolate and drops the event silently.
+ * BroadcastChannel is the bus between them.
+ * @module
+ */
+import { toSvg } from "./qr.js";
+import { formatOre } from "../public/shared/money.js";
+
+/**
+ * @param {ReturnType<import("./store.js").createStore>} store
+ * @param {{channelName?: string}} [options]
+ */
+export function createHub(store, { channelName = "room-events" } = {}) {
+  /** @type {Map<string, Set<(name: string, data: object) => void>>} */
+  const local = new Map();
+  const channel = new BroadcastChannel(channelName);
+
+  /**
+   * Attach the rendered QR and amount text. KV stores only the payload/total
+   * because rendering is deterministic, so any isolate reproduces identical
+   * output. The display page (Task 11) draws `svg` and `amountText` and runs
+   * no payment logic of its own.
+   * @param {object} roomState
+   */
+  function render(roomState) {
+    if (roomState.state !== "charge") return { ...roomState };
+    return {
+      ...roomState,
+      svg: toSvg(roomState.payload),
+      amountText: formatOre(roomState.totalOre),
+    };
+  }
+
+  /**
+   * @param {string} roomId
+   * @param {string} name
+   * @param {object} data
+   */
+  function deliverLocally(roomId, name, data) {
+    const subscribers = local.get(roomId);
+    if (!subscribers) return;
+    for (const send of subscribers) {
+      // One dead client must not block the others: a browser that vanished
+      // mid-write throws here, and the next subscriber still deserves the event.
+      try {
+        send(name, data);
+      } catch {
+        // The stream's own cancel handler removes it from the set.
+      }
+    }
+  }
+
+  channel.onmessage = (event) => {
+    const { roomId, name, data } = event.data;
+    deliverLocally(roomId, name, data);
+  };
+
+  return {
+    render,
+
+    /**
+     * Sends the current state immediately, then every subsequent one.
+     * @param {string} roomId
+     * @param {(name: string, data: object) => void} onEvent
+     * @returns {Promise<() => void>} unsubscribe
+     */
+    async subscribe(roomId, onEvent) {
+      let subscribers = local.get(roomId);
+      if (!subscribers) {
+        subscribers = new Set();
+        local.set(roomId, subscribers);
+      }
+      subscribers.add(onEvent);
+
+      // Replay on connect. SSE reconnects automatically, but a push-only server
+      // would deliver nothing on reconnect and leave a blank screen in front of a
+      // customer who is mid-scan.
+      const current = await store.getCurrent(roomId);
+      try {
+        onEvent("state", render(current));
+      } catch {
+        // Ignore: the caller's stream is already gone.
+      }
+
+      return () => {
+        const set = local.get(roomId);
+        if (!set) return;
+        set.delete(onEvent);
+        if (set.size === 0) local.delete(roomId);
+      };
+    },
+
+    /**
+     * @param {string} roomId
+     * @param {object} roomState
+     */
+    async publish(roomId, roomState) {
+      await store.setCurrent(roomId, roomState);
+      const data = render(roomState);
+      // Post AND deliver locally: a BroadcastChannel never delivers a message
+      // back to the object that posted it. Verified, not assumed.
+      channel.postMessage({ roomId, name: "state", data });
+      deliverLocally(roomId, "state", data);
+    },
+
+    close() {
+      channel.close();
+      local.clear();
+    },
+  };
+}
