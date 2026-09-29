@@ -1,68 +1,72 @@
 <!doctype html>
 <html lang="sv">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Swish-kassa</title>
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<header>
-  <span class="dot" id="dot" title="Kunddisplay"></span>
-  <h1 id="storeName">Swish-kassa</h1>
-  <button class="icon-btn" id="pairBtn">Koppla display</button>
-  <button class="icon-btn" id="settingsBtn">Inställningar</button>
-</header>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Swish-kassa</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header>
+      <span class="dot" id="dot" title="Kunddisplay"></span>
+      <h1 id="storeName">Swish-kassa</h1>
+      <button class="icon-btn" id="pairBtn">Koppla display</button>
+      <button class="icon-btn" id="settingsBtn">Inställningar</button>
+    </header>
 
-<main><div class="grid" id="grid"></div></main>
+    <main>
+      <div class="grid" id="grid"></div>
+    </main>
 
-<section class="basket">
-  <div class="lines" id="lines"></div>
-  <div class="total"><span>Totalt</span><span id="total">0,00 kr</span></div>
-  <div class="err" id="error"></div>
-  <button class="buy" id="buyBtn" disabled>Betala</button>
-</section>
+    <section class="basket">
+      <div class="lines" id="lines"></div>
+      <div class="total"><span>Totalt</span><span id="total">0,00 kr</span></div>
+      <div class="err" id="error"></div>
+      <button class="buy" id="buyBtn" disabled>Betala</button>
+    </section>
 
-<dialog id="settingsDlg">
-  <h2>Inställningar</h2>
-  <label for="fName">Butiksnamn (visas som meddelande)</label>
-  <input id="fName" autocomplete="off">
-  <label for="fPayee">Swish-nummer</label>
-  <input id="fPayee" inputmode="tel" autocomplete="off" placeholder="070-123 45 67">
-  <h3>Produkter</h3>
-  <div id="productRows"></div>
-  <button class="icon-btn" id="addRow">Lägg till produkt</button>
-  <div class="err" id="settingsError"></div>
-  <div class="row" style="margin-top:14px">
-    <button class="icon-btn" id="cancelSettings">Avbryt</button>
-    <button class="buy" style="margin:0" id="saveSettings">Spara</button>
-  </div>
-</dialog>
+    <dialog id="settingsDlg">
+      <h2>Inställningar</h2>
+      <label for="fName">Butiksnamn (visas som meddelande)</label>
+      <input id="fName" autocomplete="off">
+      <label for="fPayee">Swish-nummer</label>
+      <input id="fPayee" inputmode="tel" autocomplete="off" placeholder="070-123 45 67">
+      <h3>Produkter</h3>
+      <div id="productRows"></div>
+      <button class="icon-btn" id="addRow">Lägg till produkt</button>
+      <div class="err" id="settingsError"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="icon-btn" id="cancelSettings">Avbryt</button>
+        <button class="buy" style="margin:0" id="saveSettings">Spara</button>
+      </div>
+    </dialog>
 
-<dialog id="pairDlg">
-  <h2>Koppla kunddisplay</h2>
-  <p class="note">Öppna <b id="displayUrl"></b> på den andra telefonen och skriv koden.</p>
-  <div class="pair-code" id="pairCode">······</div>
-  <p class="note" id="pairExpiry"></p>
-  <button class="icon-btn" id="closePair">Klar</button>
-</dialog>
+    <dialog id="pairDlg">
+      <h2>Koppla kunddisplay</h2>
+      <p
+        class="note">Öppna <b id="displayUrl"></b> på den andra telefonen och skriv koden.</p>
+      <div class="pair-code" id="pairCode">······</div>
+      <p class="note" id="pairExpiry"></p>
+      <button class="icon-btn" id="closePair">Klar</button>
+    </dialog>
 
-<dialog id="qrDlg">
-  <div class="qr-wrap">
-    <div class="amount-big" id="qrAmount"></div>
-    <div class="note" id="qrNote"></div>
-    <div id="qrHolder"></div>
-    <div class="warn">
+    <dialog id="qrDlg">
+      <div class="qr-wrap">
+        <div class="amount-big" id="qrAmount"></div>
+        <div class="note" id="qrNote"></div>
+        <div id="qrHolder"></div>
+        <div class="warn">
       Appen kan inte se om betalningen kommit fram. Kontrollera i din egen
       Swish-app innan du trycker Klar.
     </div>
-    <div class="row" style="margin-top:12px">
-      <button class="icon-btn" id="cancelCharge">Avbryt</button>
-      <button class="buy" style="margin:0" id="doneCharge">Klar</button>
-    </div>
-  </div>
-</dialog>
+        <div class="row" style="margin-top:12px">
+          <button class="icon-btn" id="cancelCharge">Avbryt</button>
+          <button class="buy" style="margin:0" id="doneCharge">Klar</button>
+        </div>
+      </div>
+    </dialog>
 
-<script type="module" src="/app.js"></script>
-</body>
+    <script type="module" src="/app.js"></script>
+  </body>
 </html>

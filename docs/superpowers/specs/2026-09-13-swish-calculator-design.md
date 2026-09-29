@@ -403,8 +403,13 @@ Test-driven, using Deno's built-in test runner.
 | `swish_test.js` | Exact payload bytes; `07…`/`+46…`/`46…` normalization; merchant numbers; semicolon injection; code-point truncation over `å ä ö`; flag value |
 | `qr_test.js` | **Decode round-trip** (below), quiet zone width, opaque background, SVG path matches the encoder's matrix |
 | `store_test.js` | KV CRUD; atomic counter increment under concurrency; Stockholm-date key selection across a UTC rollover; idempotency claim and stored-response replay; rate-limit windows |
-| `rooms_test.js` | Pairing handshake, code expiry and single use, token rejection, local fan-out, `BroadcastChannel` publish, replay-on-connect |
+| `tokens_test.js` | Token length, URL-safety and uniqueness; six-digit pair codes over the whole range incl. leading zeros; SHA-256 hashing; constant-time compare |
+| `hub_test.js` | Replay-on-subscribe from KV, local fan-out (a channel never echoes to its poster), rendered `svg` and `amountText` on charge events, room isolation, unsubscribe, a throwing subscriber not stopping others |
+| `sse_test.js` | Stream tickets: first event is current state, single-use, a published charge reaches an open stream, a failing presence call unwinds the stream and hub subscription |
 | `server_test.js` | Integration: create room → pair → charge → display stream receives it; every rejection row in section 7; repeated `chargeId` yields the identical response and one order number |
+| `charge_test.js` | `POST /api/charge` and `/api/idle`: order numbers, idempotent `chargeId`, every rejection row, stale total, amount limits, note truncation that preserves the order number, semicolon injection, malformed items |
+
+`tests/helpers.js` is the shared `withServer` test harness (a handler over a temporary KV, without binding a port). It is not a test file: importing a `*_test.js` module would re-register its tests in the importer.
 
 **The QR test decodes, it does not snapshot.** A snapshot of SVG markup proves
 only that the renderer did not change; it says nothing about whether the code
@@ -418,7 +423,7 @@ whitespace. `jsqr` is a test-only dependency.
 weight: they guard the things that cost real money when wrong.
 
 Cross-isolate behaviour cannot be reproduced locally, where everything shares one
-process. `rooms_test.js` therefore asserts the *mechanism* — that publishing
+process. `hub_test.js` and `sse_test.js` therefore assert the *mechanism* — that publishing
 posts to the channel and fans out locally, and that connecting replays state from
 KV — rather than the topology. Deployed behaviour is confirmed by the manual
 check below.
@@ -434,11 +439,12 @@ kill and restore the display's connection mid-charge and confirm the QR returns.
 deno.json
 README.md            # includes the section 4 verification checklist and phone setup
 src/
-  qr.js              # payload → module matrix → SVG
-  vendor/qrcode.js   # vendored MIT encoder, pinned
-  store.js           # Deno KV access
-  rooms.js           # pairing, tokens, presence, BroadcastChannel fan-out
+  tokens.js          # random tokens, SHA-256 hashing, constant-time compare
+  store.js           # every Deno KV read and write, incl. pairing and presence
+  hub.js             # SSE subscriber registry + BroadcastChannel fan-out
+  qr.js              # payload → module matrix → SVG (npm:qrcode-generator, pinned)
   server.js          # routes
+main.js              # entry point
 public/
   shared/money.js    # öre arithmetic, SEK formatting          — browser + server
   shared/swish.js    # payload assembly, sanitizing, validation — server only in v1
@@ -448,8 +454,11 @@ public/
   display.html
   display.js
 tests/
-  money_test.js  swish_test.js  qr_test.js
-  store_test.js  rooms_test.js  server_test.js
+  helpers.js         # shared withServer harness; not a test file
+  money_test.js  swish_test.js  qr_test.js  tokens_test.js
+  store_test.js  hub_test.js  server_test.js  sse_test.js  charge_test.js
 docs/superpowers/specs/
   2026-09-13-swish-calculator-design.md
 ```
+
+*`rooms.js` was split into `tokens.js`, `store.js` and `hub.js` during implementation: four responsibilities in one file was too many. The QR encoder is a pinned npm specifier rather than a vendored file.*

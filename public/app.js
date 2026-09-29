@@ -23,7 +23,9 @@ async function api(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error ?? "fel"), { data, status: res.status });
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error ?? "fel"), { data, status: res.status });
+  }
   return data;
 }
 
@@ -48,7 +50,9 @@ function renderProducts() {
     const btn = document.createElement("button");
     btn.className = "product";
     btn.innerHTML =
-      `<span>${escapeHtml(p.name)}</span><span class="price">${formatOre(p.priceOre)}</span>` +
+      `<span>${escapeHtml(p.name)}</span><span class="price">${
+        formatOre(p.priceOre)
+      }</span>` +
       (qty ? `<span class="qty">${qty}</span>` : "");
     btn.onclick = () => {
       basket.set(p.id, qty + 1);
@@ -65,8 +69,7 @@ function renderBasket() {
     if (!p) continue;
     const row = document.createElement("div");
     row.className = "line";
-    row.innerHTML =
-      `<span class="name">${qty} × ${escapeHtml(p.name)}</span>` +
+    row.innerHTML = `<span class="name">${qty} × ${escapeHtml(p.name)}</span>` +
       `<span>${formatOre(p.priceOre * qty)}</span>`;
     const minus = document.createElement("button");
     minus.textContent = "−";
@@ -100,8 +103,10 @@ function renderAll() {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
 }
 
 // --- charging --------------------------------------------------------------
@@ -126,7 +131,9 @@ $("buyBtn").onclick = async () => {
     $("qrDlg").showModal();
   } catch (err) {
     $("error").textContent = ERRORS[err.message] ?? "Kunde inte skapa betalning.";
-    if (err.message === "stale_total" || err.message === "unknown_product") await safeRefresh();
+    if (err.message === "stale_total" || err.message === "unknown_product") {
+      await safeRefresh();
+    }
   } finally {
     inFlight = false;
     renderBasket();
@@ -153,7 +160,9 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: 0 }) {
   row.dataset.id = p.id;
   row.innerHTML =
     `<input class="name" value="${escapeHtml(p.name)}" placeholder="Namn">` +
-    `<input class="price" inputmode="decimal" value="${p.priceOre ? formatOre(p.priceOre) : ""}" placeholder="0,00">`;
+    `<input class="price" inputmode="decimal" value="${
+      p.priceOre ? formatOre(p.priceOre) : ""
+    }" placeholder="0,00">`;
   const del = document.createElement("button");
   del.className = "icon-btn";
   del.textContent = "✕";
@@ -186,7 +195,12 @@ $("saveSettings").onclick = async () => {
       const priceRaw = row.querySelector(".price").value.trim();
       if (!name && !priceRaw) return;
       if (!name) throw new Error("Alla produkter behöver ett namn.");
-      next.push({ id: row.dataset.id, name, priceOre: parseKronorToOre(priceRaw), sortOrder: i });
+      next.push({
+        id: row.dataset.id,
+        name,
+        priceOre: parseKronorToOre(priceRaw),
+        sortOrder: i,
+      });
     });
   } catch (err) {
     $("settingsError").textContent = err.message === "invalid_amount"
@@ -224,7 +238,8 @@ $("pairBtn").onclick = async () => {
   try {
     const { code } = await api("POST", "/api/pair");
     $("pairCode").textContent = code;
-    $("pairExpiry").textContent = "Koden gäller i 5 minuter och kan bara användas en gång.";
+    $("pairExpiry").textContent =
+      "Koden gäller i 5 minuter och kan bara användas en gång.";
   } catch {
     $("pairCode").textContent = "fel";
   }

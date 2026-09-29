@@ -41,7 +41,10 @@ Deno.test("basketTotalOre sums quantities", () => {
     { id: "a", priceOre: 1990 },
     { id: "b", priceOre: 2450 },
   ];
-  assertEquals(basketTotalOre([{ id: "a", qty: 2 }, { id: "b", qty: 1 }], products), 6430);
+  assertEquals(
+    basketTotalOre([{ id: "a", qty: 2 }, { id: "b", qty: 1 }], products),
+    6430,
+  );
   assertEquals(basketTotalOre([], products), 0);
 });
 
@@ -67,6 +70,10 @@ Deno.test("basketTotalOre rejects unknown products rather than skipping them", (
 Deno.test("basketTotalOre rejects bad quantities", () => {
   const products = [{ id: "a", priceOre: 100 }];
   for (const qty of [0, -1, 1.5, NaN, "2"]) {
-    assertThrows(() => basketTotalOre([{ id: "a", qty }], products), Error, "bad_quantity");
+    assertThrows(
+      () => basketTotalOre([{ id: "a", qty }], products),
+      Error,
+      "bad_quantity",
+    );
   }
 });

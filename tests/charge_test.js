@@ -95,9 +95,17 @@ Deno.test("every rejection is a hard stop with a named error", async () => {
     const { charge } = await configuredRoom(call);
     const cases = [
       [{ items: [], expectedTotalOre: 0 }, 400, "empty_basket"],
-      [{ items: [{ id: "ghost", qty: 1 }], expectedTotalOre: 100 }, 400, "unknown_product"],
+      [
+        { items: [{ id: "ghost", qty: 1 }], expectedTotalOre: 100 },
+        400,
+        "unknown_product",
+      ],
       [{ items: [{ id: "kaffe", qty: 0 }], expectedTotalOre: 0 }, 400, "bad_quantity"],
-      [{ items: [{ id: "kaffe", qty: 1.5 }], expectedTotalOre: 100 }, 400, "bad_quantity"],
+      [
+        { items: [{ id: "kaffe", qty: 1.5 }], expectedTotalOre: 100 },
+        400,
+        "bad_quantity",
+      ],
       [{ items: [{ id: "kaffe", qty: 1 }], expectedTotalOre: 9999 }, 409, "stale_total"],
     ];
     for (const [partial, status, error] of cases) {
@@ -292,7 +300,11 @@ Deno.test("a malformed item is a 400, never a 500", async () => {
   await withServer(async ({ call }) => {
     const { charge } = await configuredRoom(call);
     for (const items of [[null], ["kaffe"], [42]]) {
-      const res = await charge({ chargeId: crypto.randomUUID(), items, expectedTotalOre: 100 });
+      const res = await charge({
+        chargeId: crypto.randomUUID(),
+        items,
+        expectedTotalOre: 100,
+      });
       assertEquals(res.status, 400);
       assertEquals((await res.json()).error, "bad_request");
     }
