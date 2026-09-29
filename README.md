@@ -37,6 +37,20 @@ Also confirm once after the first deploy, with the two devices on different netw
 a charge, then kill and restore the display's connection mid-charge and check that the QR
 comes back on its own.
 
+## Where your room lives
+
+The room (store name, Swish number, products and the display pairing) is stored in the
+**operator phone's browser storage**, and nowhere you can log back into. If that storage
+is lost (a new phone, cleared browser data, or iOS deleting a site's data after 7 days
+without a visit), the room is lost with it and **cannot be recovered**. The operator page
+then starts a fresh, empty room.
+
+- **Add the operator page to the home screen.** It is harder to clear by accident, and on
+  iOS it makes the 7-day storage eviction much less likely.
+- **After a lost room, re-pair the display.** Enter settings and products again, then open
+  `/display.html?pair` on the display phone (or tap the small "Koppla om" link on its
+  welcome screen) and enter a new code from "Koppla display".
+
 ## Setting up the display phone
 
 1. Open `/display.html`, enter the 6-digit code from the operator's "Koppla display"

@@ -7,6 +7,24 @@
     creds = JSON.parse(localStorage.getItem(LS) || "null");
   } catch (_e) { /* private mode or cleared storage */ }
 
+  // Forget the pairing, so the pair screen can take a code for another room.
+  // Used when the operator's room is lost (new phone, cleared browser data):
+  // without it, stored creds would keep this display on "Välkommen" forever.
+  function forgetPairing() {
+    creds = null;
+    try {
+      localStorage.removeItem(LS);
+    } catch (_e) { /* storage unavailable: nothing to clear */ }
+  }
+
+  // /display.html?pair is the explicit re-pair path.
+  if (/^\?pair(&|=|$)/.test(location.search)) {
+    forgetPairing();
+    try {
+      history.replaceState(null, "", location.pathname);
+    } catch (_e) { /* keep the query; harmless */ }
+  }
+
   var el = function (id) {
     return document.getElementById(id);
   };
@@ -91,9 +109,17 @@
       method: "POST",
       headers: { Authorization: "Bearer " + creds.displayToken },
     }).then(function (res) {
+      if (res.status === 401 || res.status === 403) {
+        // The server no longer accepts this pairing (the room is gone):
+        // retrying cannot help, so go back to the pair screen.
+        forgetPairing();
+        show("pair");
+        return null;
+      }
       if (!res.ok) throw new Error("ticket");
       return res.json();
     }).then(function (data) {
+      if (!data) return;
       var es = new EventSource("/api/events?ticket=" + encodeURIComponent(data.ticket));
       es.addEventListener("state", function (e) {
         renderState(JSON.parse(e.data));
@@ -109,6 +135,14 @@
       setTimeout(connect, 3000);
     });
   }
+
+  // "Koppla om" is a plain link to /display.html?pair (handled above). This
+  // asks first, so a customer's stray tap does not unpair the display.
+  el("repair").addEventListener("click", function (e) {
+    if (!confirm("Koppla bort displayen och ange en ny kod?")) {
+      e.preventDefault();
+    }
+  });
 
   if (creds) {
     show("idle");

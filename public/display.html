@@ -47,23 +47,30 @@
       background: #00a54f;
       color: #fff;
     }
+    /* R28: each clamp()/min() has a fixed-px fallback on the line before it.
+       Safari before 13.1 (iOS 12) drops the whole clamp()/min() declaration,
+       and without a fallback the amount would render at 16px. */
     .amount {
+      font-size: 42px;
       font-size: clamp(38px, 12vw, 92px);
       font-weight: 800;
       line-height: 1;
     }
     .note {
+      font-size: 18px;
       font-size: clamp(15px, 4.5vw, 24px);
       color: #444;
       margin-top: 6px;
     }
     #qr svg {
+      width: 280px;
       width: min(76vh, 88vw);
       height: auto;
       display: block;
       margin: 14px auto 0;
     }
     .idle-title {
+      font-size: 32px;
       font-size: clamp(24px, 8vw, 48px);
       font-weight: 700;
     }
@@ -71,6 +78,12 @@
       color: #777;
       font-size: 14px;
       margin-top: 10px;
+    }
+    .repair {
+      display: inline-block;
+      margin-top: 40px;
+      color: #aaa;
+      font-size: 12px;
     }
     [hidden] {
       display: none !important;
@@ -88,6 +101,7 @@
     <div id="idle" hidden>
       <div class="idle-title">Välkommen</div>
       <p class="hint">Betala med Swish</p>
+      <a class="repair" id="repair" href="/display.html?pair">Koppla om</a>
     </div>
 
     <div id="charge" hidden>
