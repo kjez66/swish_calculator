@@ -7,12 +7,22 @@
  * @module
  */
 import { serveDir } from "@std/http/file-server";
-import { normalizePayee } from "../public/shared/swish.js";
+import { basketTotalOre } from "../public/shared/money.js";
+import {
+  buildPayload,
+  MESSAGE_MAX_CHARS,
+  normalizePayee,
+  sanitizeMessage,
+} from "../public/shared/swish.js";
 import { hashToken } from "./tokens.js";
 
 const ROOMS_PER_MINUTE = 10;
 const PAIR_CLAIMS_PER_MINUTE = 20;
 const HEARTBEAT_MS = 15_000;
+/** Below 1 kr is not a real sale; above 20 000 kr is a fat-finger. Neither is a
+ * Swish limit — actual ceilings are set per user by their bank. */
+const MIN_CHARGE_ORE = 100;
+const MAX_CHARGE_ORE = 2_000_000;
 
 /** @param {object} body @param {number} [status] */
 function json(body, status = 200) {
@@ -252,6 +262,84 @@ export function createHandler({ store, hub, now = () => new Date() }) {
           "X-Accel-Buffering": "no",
         },
       });
+    }
+
+    // --- charging ----------------------------------------------------------
+    if (path === "/api/charge" && req.method === "POST") {
+      const auth = await authorize(req, url, "operator");
+      if (!auth) return fail("unauthorized", 401);
+
+      const body = await req.json().catch(() => null);
+      const chargeId = String(body?.chargeId ?? "");
+      const items = body?.items;
+      if (!chargeId || !Array.isArray(items)) return fail("bad_request", 400);
+      // A non-object line would otherwise surface as a TypeError (500).
+      if (items.some((i) => i === null || typeof i !== "object")) {
+        return fail("bad_request", 400);
+      }
+
+      const settings = await store.getSettings(auth.roomId);
+      if (!settings?.storeName || !settings?.payeeNumber) {
+        return fail("not_configured", 409);
+      }
+      if (items.length === 0) return fail("empty_basket", 400);
+
+      const products = await store.getProducts(auth.roomId);
+      let totalOre;
+      try {
+        totalOre = basketTotalOre(items, products);
+      } catch (err) {
+        // An unknown id is rejected, never skipped: a dropped line undercharges.
+        return fail(err.message, 400, { id: err.productId });
+      }
+
+      if (totalOre < MIN_CHARGE_ORE) return fail("amount_too_low", 400);
+      if (totalOre > MAX_CHARGE_ORE) return fail("amount_too_high", 400);
+      if (totalOre !== body?.expectedTotalOre) {
+        return fail("stale_total", 409, { totalOre });
+      }
+
+      try {
+        const response = await store.claimCharge(auth.roomId, chargeId, async () => {
+          const orderNo = await store.nextOrderNo(auth.roomId, now());
+          // The order number must survive truncation: build the suffix first,
+          // then leave the store name only as much room as remains, so the
+          // displayed note, the stored state and the payload all carry the
+          // identical string.
+          const suffix = ` #${orderNo}`;
+          const name = Array.from(sanitizeMessage(settings.storeName))
+            .slice(0, MESSAGE_MAX_CHARS - Array.from(suffix).length)
+            .join("")
+            .trim();
+          const message = name + suffix;
+          const payload = buildPayload({
+            payee: settings.payeeNumber,
+            totalOre,
+            message,
+          });
+          const roomState = {
+            state: "charge",
+            orderNo,
+            totalOre,
+            message,
+            payload,
+            updatedAt: Date.now(),
+          };
+          await hub.publish(auth.roomId, roomState);
+          return { orderNo, totalOre, message, payload, svg: hub.render(roomState).svg };
+        });
+        return json(response);
+      } catch (err) {
+        if (err.code === "charge_in_progress") return fail("charge_in_progress", 409);
+        throw err;
+      }
+    }
+
+    if (path === "/api/idle" && req.method === "POST") {
+      const auth = await authorize(req, url, "operator");
+      if (!auth) return fail("unauthorized", 401);
+      await hub.publish(auth.roomId, { state: "idle" });
+      return json({ ok: true });
     }
 
     return fail("not_found", 404);
