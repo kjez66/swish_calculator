@@ -30,7 +30,10 @@ export function createHub(store, { channelName = "room-events" } = {}) {
     if (roomState.state !== "charge") return { ...roomState };
     return {
       ...roomState,
-      svg: toSvg(roomState.payload),
+      svg: toSvg(
+        roomState.payload,
+        `Swish QR-kod för ${formatOre(roomState.totalOre)} kr`,
+      ),
       amountText: formatOre(roomState.totalOre),
     };
   }

@@ -35,7 +35,7 @@
       text-align: center;
       width: 220px;
       padding: 10px;
-      border: 2px solid #ccc;
+      border: 2px solid #767676; /* 4.5:1: the field is drawn only by its border */
       border-radius: 10px;
     }
     #pair button {
@@ -224,53 +224,72 @@
     .repair {
       display: inline-block;
       margin-top: 40px;
-      color: #aaa;
+      color: #767676; /* discreet, but 4.5:1 (was 2.3:1) */
       font-size: 12px;
     }
     [hidden] {
       display: none !important;
     }
+    /* Each screen's main text is its h1 (one visible at a time); the classes
+       above set their size, so only the default margin needs resetting. */
+    h1 {
+      margin: 0;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     </style>
   </head>
   <body>
-    <form id="pair">
-      <p><label for="code">Ange kopplingskoden från kassan.</label></p>
-      <input id="code" inputmode="numeric" maxlength="6" placeholder="000000"
-        autocomplete="off">
-      <div><button id="claim" type="submit">Koppla</button></div>
-      <p class="hint" id="pairError" role="alert"></p>
-    </form>
+    <main>
+      <form id="pair">
+        <h1 class="sr-only">Koppla kunddisplay</h1>
+        <p><label for="code">Ange kopplingskoden från kassan.</label></p>
+        <input id="code" inputmode="numeric" maxlength="6" placeholder="000000"
+          autocomplete="off">
+        <div><button id="claim" type="submit">Koppla</button></div>
+        <p class="hint" id="pairError" role="alert"></p>
+      </form>
 
-    <div id="idle" hidden>
-      <div class="idle-title">Välkommen</div>
-      <p class="hint">Betala med</p>
-      <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
-      <p class="wake-hint" id="wakeHint" hidden>
+      <div id="idle" hidden>
+        <h1 class="idle-title">Välkommen</h1>
+        <p class="hint">Betala med</p>
+        <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
+        <p class="wake-hint" id="wakeHint" hidden>
         Tryck en gång på skärmen så håller den sig tänd.
       </p>
-      <div><a class="repair" id="repair" href="/display.html?pair">Koppla om</a></div>
-    </div>
+        <div><a class="repair" id="repair" href="/display.html?pair">Koppla om</a></div>
+      </div>
 
-    <!-- Shown only after the operator pressed Klar, having seen the money land
-         in their own Swish app: this page cannot see payments itself. -->
-    <div id="thanks" hidden>
-      <svg class="approved" viewBox="0 0 52 52" aria-hidden="true">
-        <circle class="approved-circle" cx="26" cy="26" r="24" />
-        <path class="approved-check" d="M15 27l7 7 15-15" />
-      </svg>
-      <div class="idle-title">Tack!</div>
-      <p class="thanks-text">Betalningen är mottagen</p>
-    </div>
+      <!-- Shown only after the operator pressed Klar, having seen the money land
+           in their own Swish app: this page cannot see payments itself. -->
+      <div id="thanks" hidden>
+        <svg class="approved" viewBox="0 0 52 52" aria-hidden="true">
+          <circle class="approved-circle" cx="26" cy="26" r="24" />
+          <path class="approved-check" d="M15 27l7 7 15-15" />
+        </svg>
+        <h1 class="idle-title">Tack!</h1>
+        <p class="thanks-text">Betalningen är mottagen</p>
+      </div>
 
-    <div id="charge" hidden>
-      <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
-      <div class="amount" id="amount"></div>
-      <div class="note" id="note"></div>
-      <div id="qr"></div>
-      <div class="scan">Öppna Swish-appen och skanna QR-koden</div>
-    </div>
+      <div id="charge" hidden>
+        <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
+        <h1 class="amount" id="amount"></h1>
+        <div class="note" id="note"></div>
+        <div id="qr"></div>
+        <div class="scan">Öppna Swish-appen och skanna QR-koden</div>
+      </div>
+    </main>
 
-    <div class="status" id="status" hidden>Återansluter…</div>
+    <div class="status" id="status" role="status" hidden>Återansluter…</div>
 
     <script src="/display.js"></script>
   </body>

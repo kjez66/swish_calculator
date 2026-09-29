@@ -153,7 +153,11 @@ export function createHandler({ store, hub, now = () => new Date() }) {
       // and pairs it, with no typing. It is not payment data: it only grants the
       // same single-use, 5-minute, read-only pairing the typed code does.
       const pairUrl = `${url.origin}/display.html?code=${code}`;
-      return json({ code, pairUrl, pairQrSvg: toSvg(pairUrl) });
+      return json({
+        code,
+        pairUrl,
+        pairQrSvg: toSvg(pairUrl, "QR-kod för att koppla displayen"),
+      });
     }
 
     if (path === "/api/pair/claim" && req.method === "POST") {

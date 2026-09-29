@@ -75,6 +75,13 @@ Deno.test("published events carry a rendered SVG and amount text", async () => {
 
     await hub.publish(roomId, CHARGE);
     assertEquals(events[0].svg.startsWith("<svg"), true);
+    // A screen reader hears what the code is for, not just "image".
+    assertEquals(
+      events[0].svg.includes(
+        `aria-label="Swish QR-kod för ${formatOre(CHARGE.totalOre)} kr"`,
+      ),
+      true,
+    );
     assertEquals(events[0].amountText, formatOre(CHARGE.totalOre));
     off();
   });

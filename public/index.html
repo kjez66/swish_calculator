@@ -31,7 +31,10 @@
       <div class="grid" id="grid"></div>
     </main>
 
-    <section class="basket">
+    <!-- Spoken, not shown: basket changes and connection changes (WCAG 4.1.3). -->
+    <p class="sr-only" role="status" id="announce"></p>
+
+    <section class="basket" aria-label="Korg">
       <div class="lines" id="lines"></div>
       <div class="total"><span>Totalt</span><span id="total">0,00 kr</span></div>
       <div class="err" id="error" role="alert"></div>
@@ -43,12 +46,12 @@
       <button class="buy" id="buyBtn" disabled>Ta betalt</button>
     </section>
 
-    <dialog id="settingsDlg">
-      <h2>Inställningar</h2>
+    <dialog id="settingsDlg" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Inställningar</h2>
       <label for="fName">Butiksnamn (visas som meddelande)</label>
-      <input id="fName" autocomplete="off">
+      <input id="fName" autocomplete="organization">
       <label for="fPayee">Swish-nummer</label>
-      <input id="fPayee" inputmode="tel" autocomplete="off" placeholder="070-123 45 67">
+      <input id="fPayee" type="tel" autocomplete="tel" placeholder="070-123 45 67">
       <h3>Produkter</h3>
       <div id="productRows"></div>
       <button class="icon-btn" id="addRow">Lägg till produkt</button>
@@ -60,8 +63,8 @@
       </div>
     </dialog>
 
-    <dialog id="pairDlg">
-      <h2>Koppla kunddisplay</h2>
+    <dialog id="pairDlg" aria-labelledby="pairTitle">
+      <h2 id="pairTitle">Koppla kunddisplay</h2>
       <div class="qr-wrap">
         <p class="note">Skanna med kameran på displaytelefonen.</p>
         <div id="pairQr"></div>
@@ -75,7 +78,7 @@
       </div>
     </dialog>
 
-    <dialog id="qrDlg">
+    <dialog id="qrDlg" aria-label="Betalning">
       <div class="qr-wrap">
         <div class="logo-plate">
           <img src="/brand/swish-logo.svg" alt="Swish">

@@ -57,6 +57,7 @@ function renderProducts() {
     const qty = basket.get(p.id) ?? 0;
     const btn = document.createElement("button");
     btn.className = "product";
+    btn.dataset.focus = `tile:${p.id}`;
     btn.setAttribute(
       "aria-label",
       `${p.name}, ${formatOre(p.priceOre)} kr${qty ? `, ${qty} i korgen` : ""}`,
@@ -66,11 +67,7 @@ function renderProducts() {
         formatOre(p.priceOre)
       }</span>` +
       (qty ? `<span class="qty">${qty}</span>` : "");
-    btn.onclick = () => {
-      tapFeedback();
-      basket.set(p.id, qty + 1);
-      renderAll();
-    };
+    btn.onclick = () => changeQty(p.id, +1);
     $("grid").append(btn);
   }
 }
@@ -78,6 +75,24 @@ function renderProducts() {
 // A short buzz confirms a tap without looking (Android; iOS has no vibrate API).
 function tapFeedback() {
   navigator.vibrate?.(10);
+}
+
+/** Add or remove one of a product, and say the result for screen readers. */
+function changeQty(id, delta) {
+  tapFeedback();
+  const qty = (basket.get(id) ?? 0) + delta;
+  if (qty > 0) basket.set(id, qty);
+  else basket.delete(id);
+  const { total } = renderAll();
+  const p = products.find((x) => x.id === id);
+  announce(`${p.name}: ${qty} i korgen. Totalt ${formatOre(total)} kr.`);
+}
+
+// Spoken by screen readers via the role="status" region (WCAG 4.1.3).
+function announce(message) {
+  // Clear first, so the same message twice in a row is still announced.
+  $("announce").textContent = "";
+  setTimeout(() => ($("announce").textContent = message), 50);
 }
 
 function renderBasket() {
@@ -89,22 +104,12 @@ function renderBasket() {
     row.className = "line";
     const name = escapeHtml(p.name);
     row.innerHTML = `<span class="name">${name}</span>` +
-      `<button class="minus" aria-label="En ${name} mindre">−</button>` +
+      `<button class="minus" data-focus="minus:${id}" aria-label="En ${name} mindre">−</button>` +
       `<span class="qty-n">${qty}</span>` +
-      `<button class="plus" aria-label="En ${name} till">+</button>` +
+      `<button class="plus" data-focus="plus:${id}" aria-label="En ${name} till">+</button>` +
       `<span class="sum">${formatOre(p.priceOre * qty)}</span>`;
-    row.querySelector(".minus").onclick = () => {
-      tapFeedback();
-      const next = qty - 1;
-      if (next > 0) basket.set(id, next);
-      else basket.delete(id);
-      renderAll();
-    };
-    row.querySelector(".plus").onclick = () => {
-      tapFeedback();
-      basket.set(id, qty + 1);
-      renderAll();
-    };
+    row.querySelector(".minus").onclick = () => changeQty(id, -1);
+    row.querySelector(".plus").onclick = () => changeQty(id, +1);
     $("lines").append(row);
   }
 
@@ -130,10 +135,21 @@ function renderBasket() {
   return { items, total };
 }
 
+// Re-rendering replaces the buttons, which would drop keyboard focus onto
+// <body> on every tap (WCAG 2.4.3). Put it back on the same control; when a
+// basket line disappears (quantity 0), fall back to that product's tile.
 function renderAll() {
+  const focused = document.activeElement?.dataset?.focus;
   $("storeName").textContent = settings?.storeName || "Swish-kassa";
   renderProducts();
-  renderBasket();
+  const result = renderBasket();
+  if (focused) {
+    const id = focused.slice(focused.indexOf(":") + 1);
+    const target = document.querySelector(`[data-focus="${CSS.escape(focused)}"]`) ??
+      document.querySelector(`[data-focus="${CSS.escape(`tile:${id}`)}"]`);
+    target?.focus();
+  }
+  return result;
 }
 
 function escapeHtml(s) {
@@ -154,6 +170,7 @@ $("buyBtn").onclick = async () => {
   renderBasket();
   $("error").textContent = "";
   try {
+    await idleDone;
     const res = await api("POST", "/api/charge", {
       chargeId: crypto.randomUUID(),
       items,
@@ -198,12 +215,20 @@ async function endCharge() {
   if (reason === "paid") {
     basket.clear();
     renderAll();
+    // The dialog hands focus back to "Ta betalt", which is now disabled (empty
+    // basket), so a keyboard user would land on <body>. Start at the products.
+    document.querySelector(".product")?.focus();
+    announce("Betalningen avslutad. Korgen är tom.");
   }
   if (reason === "server") return;
-  try {
-    await api("POST", "/api/idle", reason === "paid" ? { paid: true } : undefined);
-  } catch { /* the display will resync on its next event */ }
+  idleDone = api("POST", "/api/idle", reason === "paid" ? { paid: true } : undefined)
+    .catch(() => {/* the display will resync on its next event */});
+  await idleDone;
 }
+// The last /api/idle request. A new charge waits for it: otherwise a quick
+// operator's next charge can reach the server first, and the late idle would
+// then wipe the new QR off the display (and close its dialog here).
+let idleDone = Promise.resolve();
 $("qrDlg").addEventListener("close", endCharge);
 $("doneCharge").onclick = () => $("qrDlg").close("paid");
 $("cancelCharge").onclick = () => $("qrDlg").close();
@@ -219,9 +244,10 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   const row = document.createElement("div");
   row.className = "product-row";
   row.dataset.id = p.id;
-  row.innerHTML = `<input class="name" value="${escapeHtml(p.name)}" placeholder="Namn"` +
-    ` aria-label="Produktnamn">` +
-    // Visible "Pris … kr" labels: a placeholder alone disappears once typed in.
+  // Visible "Namn" and "Pris … kr" labels: a placeholder alone disappears once
+  // typed in (WCAG 3.3.2). Each aria-label contains its visible label (2.5.3).
+  row.innerHTML = `<div class="row"><span class="unit" aria-hidden="true">Namn</span>` +
+    `<input class="name" value="${escapeHtml(p.name)}" aria-label="Namn"></div>` +
     `<div class="row"><span class="unit" aria-hidden="true">Pris</span>` +
     `<input class="price" inputmode="decimal" value="${
       Number.isInteger(p.priceOre) ? formatOre(p.priceOre) : ""
@@ -231,9 +257,25 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
     `<button class="icon-btn down" aria-label="Flytta ned">↓</button>` +
     `<button class="icon-btn del" aria-label="Ta bort produkt">✕</button>` +
     `</div>`;
-  row.querySelector(".up").onclick = () => row.previousElementSibling?.before(row);
-  row.querySelector(".down").onclick = () => row.nextElementSibling?.after(row);
-  row.querySelector(".del").onclick = () => row.remove();
+  // Moving or removing a row takes the pressed button out of the DOM, which
+  // drops keyboard focus; keep it on the button (or, after a delete, on the
+  // nearest remaining row) so the next key press does what the user expects.
+  const move = (btn, where) => {
+    const sibling = where === "up" ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;
+    if (where === "up") sibling.before(row);
+    else sibling.after(row);
+    btn.focus();
+    announce(where === "up" ? "Flyttad upp" : "Flyttad ned");
+  };
+  row.querySelector(".up").onclick = (e) => move(e.currentTarget, "up");
+  row.querySelector(".down").onclick = (e) => move(e.currentTarget, "down");
+  row.querySelector(".del").onclick = () => {
+    const next = row.nextElementSibling ?? row.previousElementSibling;
+    row.remove();
+    (next?.querySelector(".name") ?? $("addRow")).focus();
+    announce("Produkten borttagen");
+  };
   return row;
 }
 
@@ -401,9 +443,13 @@ const STATUS = {
   none: { text: "Ingen display", dot: "" },
   offline: { text: "Ingen anslutning", dot: "offline" },
 };
+let lastStatus = null;
 function setStatus(kind) {
   $("dotText").textContent = STATUS[kind].text;
   $("dot").className = `dot ${STATUS[kind].dot}`;
+  // Spoken only on a real change: presence repeats with every heartbeat.
+  if (lastStatus !== null && kind !== lastStatus) announce(STATUS[kind].text);
+  lastStatus = kind;
 }
 
 // --- boot ------------------------------------------------------------------
@@ -458,5 +504,14 @@ async function boot() {
 // iOS Safari applies :active (the pressed look on buttons and product tiles)
 // only when the page has a touchstart listener.
 document.addEventListener("touchstart", () => {}, { passive: true });
+
+// Keep --basket-h equal to the fixed basket's real height, so style.css's
+// scroll-padding lifts keyboard-focused products clear of it (WCAG 2.4.11).
+new ResizeObserver(([entry]) => {
+  document.documentElement.style.setProperty(
+    "--basket-h",
+    `${Math.ceil(entry.target.getBoundingClientRect().height)}px`,
+  );
+}).observe(document.querySelector(".basket"));
 
 boot();

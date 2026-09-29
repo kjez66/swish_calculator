@@ -50,7 +50,8 @@ Deno.test("a pair code comes with a scannable link that carries it", async () =>
     // The display phone's camera opens this URL, which pairs with no typing.
     assertEquals(body.pairUrl, `http://localhost/display.html?code=${body.code}`);
     // toSvg's own tests prove its output decodes back to the input.
-    assertEquals(body.pairQrSvg, toSvg(body.pairUrl));
+    // Labelled as a pairing code, not as a payment ("Swish") code.
+    assertEquals(body.pairQrSvg, toSvg(body.pairUrl, "QR-kod för att koppla displayen"));
   });
 });
 

@@ -38,9 +38,10 @@ export function toMatrix(payload) {
 
 /**
  * @param {string} payload
+ * @param {string} [label] what a screen reader announces for the code
  * @returns {string} a complete <svg> element
  */
-export function toSvg(payload) {
+export function toSvg(payload, label = "Swish QR-kod") {
   const matrix = toMatrix(payload);
   const n = matrix.length;
   const q = QUIET_ZONE_MODULES;
@@ -57,9 +58,17 @@ export function toSvg(payload) {
   // resampling artifacts. The background rect is opaque by design.
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}"`,
-    ` shape-rendering="crispEdges" role="img" aria-label="Swish QR-kod">`,
+    ` shape-rendering="crispEdges" role="img" aria-label="${escapeAttr(label)}">`,
     `<rect width="100%" height="100%" fill="#ffffff"/>`,
     `<path d="${path}" fill="#000000"/>`,
     `</svg>`,
   ].join("");
+}
+
+/** @param {string} s */
+function escapeAttr(s) {
+  return s.replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+  );
 }

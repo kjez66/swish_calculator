@@ -84,3 +84,11 @@ Deno.test("the SVG path covers exactly the dark modules of the matrix", () => {
   const drawn = (svg.match(/M\d+ \d+h1v1H\d+z/g) ?? []).length;
   assertEquals(drawn, expectedDark);
 });
+
+Deno.test("toSvg names the code for screen readers, escaping the label", () => {
+  assertStringIncludes(toSvg(PAYLOAD), 'role="img" aria-label="Swish QR-kod"');
+  assertStringIncludes(
+    toSvg(PAYLOAD, 'Kod för "A" & <B>'),
+    'aria-label="Kod för &quot;A&quot; &amp; &lt;B&gt;"',
+  );
+});
