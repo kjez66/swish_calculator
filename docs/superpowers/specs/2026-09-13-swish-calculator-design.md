@@ -221,12 +221,12 @@ All authenticated routes take `Authorization: Bearer <token>`.
 | GET | `/api/state` | operator | Returns `{ settings, products }`. |
 | PUT | `/api/settings` | operator | Body `{ storeName, payeeNumber }`. Validates the payee. |
 | PUT | `/api/products` | operator | Body: the full product array. Replaces atomically. |
-| POST | `/api/pair` | operator | Issues a single-use 6-digit code, valid 5 minutes. |
+| POST | `/api/pair` | operator | Issues a single-use 6-digit code, valid 5 minutes. Returns `{ code, pairUrl, pairQrSvg }`: `pairUrl` is `/display.html?code=<code>`, and scanning its QR pairs the display with no typing. |
 | POST | `/api/pair/claim` | none | Body `{ code }`. Returns `{ roomId, displayToken }`. Rate limited. |
 | POST | `/api/stream-ticket` | either | Returns `{ ticket }`, single-use, valid 30 seconds, carries the caller's role. |
 | GET | `/api/events?ticket=…` | ticket | SSE stream. |
 | POST | `/api/charge` | operator | Body `{ chargeId, items: [{ id, qty }], expectedTotalOre }`. |
-| POST | `/api/idle` | operator | Sets room state to idle. |
+| POST | `/api/idle` | operator | Sets room state to idle. Optional body `{ paid: true }` (the operator's Klar) adds `thanks: true` to the live event only, never to the stored state, so the display shows "Tack!" briefly and a replay cannot repeat it. |
 
 `EventSource` cannot set request headers, which would force the token into the
 query string where proxy and server logs capture it. The single-use 30-second
