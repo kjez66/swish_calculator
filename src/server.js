@@ -15,6 +15,7 @@ import {
   sanitizeMessage,
 } from "../public/shared/swish.js";
 import { hashToken } from "./tokens.js";
+import { toSvg } from "./qr.js";
 
 const ROOMS_PER_MINUTE = 10;
 const PAIR_CLAIMS_PER_MINUTE = 20;
@@ -147,7 +148,12 @@ export function createHandler({ store, hub, now = () => new Date() }) {
     if (path === "/api/pair" && req.method === "POST") {
       const auth = await authorize(req, url, "operator");
       if (!auth) return fail("unauthorized", 401);
-      return json({ code: await store.createPairCode(auth.roomId) });
+      const code = await store.createPairCode(auth.roomId);
+      // Scanning this with the display phone's camera opens the display page
+      // and pairs it, with no typing. It is not payment data: it only grants the
+      // same single-use, 5-minute, read-only pairing the typed code does.
+      const pairUrl = `${url.origin}/display.html?code=${code}`;
+      return json({ code, pairUrl, pairQrSvg: toSvg(pairUrl) });
     }
 
     if (path === "/api/pair/claim" && req.method === "POST") {

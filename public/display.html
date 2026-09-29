@@ -145,6 +145,15 @@
     #pairError {
       color: #b00020;
     }
+    .wake-hint {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      background: #fff4d6;
+      color: #5c4400;
+    }
     /* Shown while the live connection is down, so the operator can see the
        display is not following along (it would otherwise look frozen). */
     .status {
@@ -181,6 +190,9 @@
       <div class="idle-title">Välkommen</div>
       <p class="hint">Betala med</p>
       <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
+      <p class="wake-hint" id="wakeHint" hidden>
+        Tryck en gång på skärmen så håller den sig tänd.
+      </p>
       <div><a class="repair" id="repair" href="/display.html?pair">Koppla om</a></div>
     </div>
 

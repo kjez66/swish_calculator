@@ -47,14 +47,17 @@ then starts a fresh, empty room.
 
 - **Add the operator page to the home screen.** It is harder to clear by accident, and on
   iOS it makes the 7-day storage eviction much less likely.
-- **After a lost room, re-pair the display.** Enter settings and products again, then open
-  `/display.html?pair` on the display phone (or tap the small "Koppla om" link on its
-  welcome screen) and enter a new code from "Koppla display".
+- **After a lost room, re-pair the display.** Enter settings and products again, then tap
+  the status button in the operator's header and scan the pairing QR with the display
+  phone's camera. That replaces the old pairing by itself.
 
 ## Setting up the display phone
 
-1. Open `/display.html`, enter the 6-digit code from the operator's "Koppla display"
-   button. You only do this once.
+1. On the operator phone, tap the status button in the header ("Ingen display"). Scan the
+   pairing QR it shows with the display phone's camera: the display page opens and pairs
+   itself. (Or open `/display.html` and type the 6-digit code shown under the QR.) You
+   only do this once. If the display then asks for one tap, give it: that tap is what lets
+   the browser keep the screen on.
 2. Add the page to the home screen so it opens fullscreen.
 3. **Set the screen timeout to Never** and **turn off auto-brightness, with brightness at
    maximum.** The page requests a wake lock where the browser supports one, but older

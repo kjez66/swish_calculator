@@ -381,4 +381,20 @@ input[aria-invalid] {
   font-weight: 800;
   letter-spacing: 6px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pair-code.pending {
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+  min-height: 56px;
+}
+#pairQr svg {
+  display: block;
+  margin: 8px auto;
+  width: 160px;
+  width: min(48vw, 30vh, 220px);
+  height: auto;
+  border-radius: 8px;
 }

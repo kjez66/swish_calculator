@@ -333,20 +333,31 @@ $("saveSettings").onclick = async () => {
 
 // --- pairing ---------------------------------------------------------------
 
-$("pairBtn").onclick = async () => {
+async function openPairing() {
   $("displayUrl").textContent = `${location.origin}/display.html`;
-  $("pairCode").textContent = "······";
+  $("pairQr").innerHTML = "";
+  $("pairCode").textContent = "Hämtar kod…";
+  $("pairCode").classList.add("pending");
   $("pairExpiry").textContent = "";
-  $("pairDlg").showModal();
+  $("retryPair").hidden = true;
+  if (!$("pairDlg").open) $("pairDlg").showModal();
   try {
-    const { code } = await api("POST", "/api/pair");
+    // The QR opens the display page with the code in it, so the display phone
+    // pairs itself when scanned; the typed code is the fallback.
+    const { code, pairQrSvg } = await api("POST", "/api/pair");
+    $("pairQr").innerHTML = pairQrSvg;
     $("pairCode").textContent = code;
+    $("pairCode").classList.remove("pending");
     $("pairExpiry").textContent =
       "Koden gäller i 5 minuter och kan bara användas en gång.";
   } catch {
-    $("pairCode").textContent = "fel";
+    // Stays in the small "pending" style: this is a message, not a code.
+    $("pairCode").textContent = "Kunde inte skapa en kod.";
+    $("retryPair").hidden = false;
   }
-};
+}
+$("pairBtn").onclick = openPairing;
+$("retryPair").onclick = openPairing;
 $("closePair").onclick = () => $("pairDlg").close();
 
 // --- live connection -------------------------------------------------------

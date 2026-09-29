@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { withServer } from "./helpers.js";
+import { toSvg } from "../src/qr.js";
 
 /** Read SSE frames from a Response until `count` `data:` lines have arrived. */
 async function readEvents(res, count, timeoutMs = 3000) {
@@ -37,6 +38,19 @@ Deno.test("pairing hands a display its own token", async () => {
       .json();
     assertEquals(claimed.roomId, roomId);
     assertEquals(await store.authenticate(roomId, claimed.displayToken), "display");
+  });
+});
+
+Deno.test("a pair code comes with a scannable link that carries it", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const body = await (await call("POST", `/api/pair?roomId=${roomId}`, {
+      token: operatorToken,
+    })).json();
+    // The display phone's camera opens this URL, which pairs with no typing.
+    assertEquals(body.pairUrl, `http://localhost/display.html?code=${body.code}`);
+    // toSvg's own tests prove its output decodes back to the input.
+    assertEquals(body.pairQrSvg, toSvg(body.pairUrl));
   });
 });
 

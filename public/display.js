@@ -17,8 +17,13 @@
     } catch (_e) { /* storage unavailable: nothing to clear */ }
   }
 
-  // /display.html?pair is the explicit re-pair path.
-  if (/^\?pair(&|=|$)/.test(location.search)) {
+  // /display.html?pair is the explicit re-pair path. /display.html?code=123456
+  // is what the operator's pairing QR opens: scanning it means "pair with this
+  // room", so any old pairing is dropped and the code is claimed at once below.
+  // Either way the query is removed, so a reload does not repeat it and the
+  // single-use code does not linger in the address bar.
+  var urlCode = (/[?&]code=(\d{6})(?:&|$)/.exec(location.search) || [])[1] || null;
+  if (urlCode || /^\?pair(&|=|$)/.test(location.search)) {
     forgetPairing();
     try {
       history.replaceState(null, "", location.pathname);
@@ -39,10 +44,19 @@
     if (!navigator.wakeLock) return;
     navigator.wakeLock.request("screen").then(function (lock) {
       wakeLock = lock;
+      updateWakeHint();
       lock.addEventListener("release", function () {
         wakeLock = null;
+        updateWakeHint();
       });
-    }).catch(function () {/* denied or unsupported */});
+    }).catch(function () {
+      updateWakeHint(); // denied, e.g. no user gesture yet: ask for one tap
+    });
+  }
+  // Pairing by QR needs no tap on this page, and without a tap the browser may
+  // refuse the wake lock, so the screen would go dark mid-market. Ask for one.
+  function updateWakeHint() {
+    el("wakeHint").hidden = !navigator.wakeLock || !!wakeLock;
   }
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && !wakeLock) requestWakeLock();
@@ -97,9 +111,12 @@
   // A real form, so the keyboard's Enter / Gå key submits the code too.
   el("pair").addEventListener("submit", function (e) {
     e.preventDefault();
-    var code = el("code").value.trim();
-    el("pairError").textContent = "";
     requestWakeLock(); // acquired here because this is a real user gesture
+    claim(el("code").value.trim());
+  });
+
+  function claim(code) {
+    el("pairError").textContent = "";
     fetch("/api/pair/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,11 +132,12 @@
       show("idle");
       connect();
     }).catch(function (err) {
+      show("pair");
       el("pairError").textContent = err.message === "429"
         ? "För många försök. Vänta en minut."
         : "Fel kod, eller så har den gått ut.";
     });
-  });
+  }
 
   // --- live connection -----------------------------------------------------
   function setOnline(online) {
@@ -174,8 +192,14 @@
     }
   });
 
-  if (creds) {
+  if (urlCode) {
+    el("code").value = urlCode; // visible if the claim fails, for a retry
+    show("pair");
+    requestWakeLock(); // may be refused without a tap; the hint covers that
+    claim(urlCode);
+  } else if (creds) {
     show("idle");
     connect();
+    requestWakeLock();
   } else show("pair");
 })();

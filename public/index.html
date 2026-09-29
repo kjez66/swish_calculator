@@ -62,11 +62,17 @@
 
     <dialog id="pairDlg">
       <h2>Koppla kunddisplay</h2>
-      <p
-        class="note">Öppna <b id="displayUrl"></b> på den andra telefonen och skriv koden.</p>
-      <div class="pair-code" id="pairCode">······</div>
-      <p class="note" id="pairExpiry"></p>
-      <button class="icon-btn" id="closePair">Klar</button>
+      <div class="qr-wrap">
+        <p class="note">Skanna med kameran på displaytelefonen.</p>
+        <div id="pairQr"></div>
+        <p class="note">Eller öppna <b id="displayUrl"></b> och skriv koden:</p>
+        <div class="pair-code" id="pairCode" aria-live="polite"></div>
+        <p class="note" id="pairExpiry"></p>
+      </div>
+      <div class="row actions">
+        <button class="icon-btn" id="retryPair" hidden>Försök igen</button>
+        <button class="buy" id="closePair">Klar</button>
+      </div>
     </dialog>
 
     <dialog id="qrDlg">
