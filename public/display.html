@@ -137,6 +137,61 @@
       font-size: clamp(24px, 8vw, 48px);
       font-weight: 700;
     }
+    /* The "approved" check: the circle draws, then the tick, then a small pop.
+       Our own plain check, deliberately unlike the Swish app's confirmation.
+       #thanks is display:none between sales, and CSS restarts an animation
+       when its element is displayed again, so every sale replays it. */
+    .approved {
+      display: block;
+      width: 120px;
+      width: clamp(96px, 28vw, 180px);
+      height: auto;
+      margin: 0 auto 16px;
+      animation: approved-pop 0.3s 0.7s ease-out;
+    }
+    .approved-circle {
+      fill: #e8f5ee;
+      stroke: #007f3f;
+      stroke-width: 3;
+      stroke-dasharray: 151; /* circumference 2 × π × 24 ≈ 150.8 */
+      stroke-dashoffset: 151;
+      animation: approved-draw 0.45s ease-out forwards;
+    }
+    .approved-check {
+      fill: none;
+      stroke: #007f3f;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 32; /* path length 7√2 + 15√2 ≈ 31.1 */
+      stroke-dashoffset: 32;
+      animation: approved-draw 0.3s 0.4s ease-out forwards;
+    }
+    @keyframes approved-draw {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    @keyframes approved-pop {
+      50% {
+        transform: scale(1.08);
+      }
+    }
+    /* Reduce motion: show the finished check, no drawing or pop. */
+    @media (prefers-reduced-motion: reduce) {
+      .approved,
+      .approved-circle,
+      .approved-check {
+        animation: none;
+        stroke-dashoffset: 0;
+      }
+    }
+    .thanks-text {
+      font-size: 18px;
+      font-size: clamp(16px, 4.5vw, 24px);
+      color: #333;
+      margin-top: 8px;
+    }
     .hint {
       color: #595959;
       font-size: 14px;
@@ -196,9 +251,15 @@
       <div><a class="repair" id="repair" href="/display.html?pair">Koppla om</a></div>
     </div>
 
+    <!-- Shown only after the operator pressed Klar, having seen the money land
+         in their own Swish app: this page cannot see payments itself. -->
     <div id="thanks" hidden>
+      <svg class="approved" viewBox="0 0 52 52" aria-hidden="true">
+        <circle class="approved-circle" cx="26" cy="26" r="24" />
+        <path class="approved-check" d="M15 27l7 7 15-15" />
+      </svg>
       <div class="idle-title">Tack!</div>
-      <p class="hint">Välkommen åter</p>
+      <p class="thanks-text">Betalningen är mottagen</p>
     </div>
 
     <div id="charge" hidden>
