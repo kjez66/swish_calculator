@@ -126,23 +126,24 @@ $("buyBtn").onclick = async () => {
     $("qrDlg").showModal();
   } catch (err) {
     $("error").textContent = ERRORS[err.message] ?? "Kunde inte skapa betalning.";
-    if (err.message === "stale_total" || err.message === "unknown_product") await refresh();
+    if (err.message === "stale_total" || err.message === "unknown_product") await safeRefresh();
   } finally {
     inFlight = false;
     renderBasket();
   }
 };
 
+// Runs on every dismissal (Klar, Avbryt, Esc, back gesture) via the close event.
 async function endCharge() {
-  $("qrDlg").close();
   basket.clear();
   renderAll();
   try {
     await api("POST", "/api/idle");
   } catch { /* the display will resync on its next event */ }
 }
-$("doneCharge").onclick = endCharge;
-$("cancelCharge").onclick = endCharge;
+$("qrDlg").addEventListener("close", endCharge);
+$("doneCharge").onclick = () => $("qrDlg").close();
+$("cancelCharge").onclick = () => $("qrDlg").close();
 
 // --- settings --------------------------------------------------------------
 
@@ -210,7 +211,7 @@ $("saveSettings").onclick = async () => {
     return; // The dialog stays open: never show a saved state we did not achieve.
   }
   $("settingsDlg").close();
-  await refresh();
+  await safeRefresh();
 };
 
 // --- pairing ---------------------------------------------------------------
@@ -263,13 +264,37 @@ async function refresh() {
   renderAll();
 }
 
-async function boot() {
-  if (!room) {
-    const res = await fetch("/api/rooms", { method: "POST" });
-    room = await res.json();
-    localStorage.setItem(LS, JSON.stringify(room));
+async function safeRefresh() {
+  try {
+    await refresh();
+  } catch {
+    $("error").textContent = "Kunde inte hämta data. Kontrollera anslutningen.";
   }
-  await refresh();
+}
+
+async function createRoom() {
+  const res = await fetch("/api/rooms", { method: "POST" });
+  if (!res.ok) throw new Error("rooms");
+  room = await res.json();
+  localStorage.setItem(LS, JSON.stringify(room));
+}
+
+async function boot() {
+  try {
+    if (!room) await createRoom();
+    try {
+      await refresh();
+    } catch (err) {
+      if (err.status !== 401) throw err;
+      // The server no longer knows this room: start over once, without looping.
+      localStorage.removeItem(LS);
+      await createRoom();
+      await refresh();
+    }
+  } catch {
+    $("error").textContent = "Kunde inte ansluta till servern. Ladda om sidan.";
+    return;
+  }
   connect();
   if (!settings?.storeName) $("settingsBtn").click();
 }
