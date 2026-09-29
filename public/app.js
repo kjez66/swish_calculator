@@ -125,10 +125,7 @@ $("buyBtn").onclick = async () => {
       items,
       expectedTotalOre: total,
     });
-    $("qrAmount").textContent = `${formatOre(res.totalOre)} kr`;
-    $("qrNote").textContent = res.message;
-    $("qrHolder").innerHTML = res.svg;
-    $("qrDlg").showModal();
+    showCharge(res);
   } catch (err) {
     $("error").textContent = ERRORS[err.message] ?? "Kunde inte skapa betalning.";
     if (err.message === "stale_total" || err.message === "unknown_product") {
@@ -140,10 +137,30 @@ $("buyBtn").onclick = async () => {
   }
 };
 
+/**
+ * Fill the QR dialog from a charge (the POST response or a `state` event) and
+ * open it. The live event and the POST response for the same charge race each
+ * other, so whichever arrives second must not call showModal() again.
+ */
+function showCharge(c) {
+  $("qrAmount").textContent = `${formatOre(c.totalOre)} kr`;
+  $("qrNote").textContent = c.message;
+  $("qrHolder").innerHTML = c.svg;
+  if (!$("qrDlg").open) $("qrDlg").showModal();
+}
+
+// Set when the server, not the operator, ended the charge: the dialog's close
+// handler must then not post /api/idle again.
+let closedByServer = false;
+
 // Runs on every dismissal (Klar, Avbryt, Esc, back gesture) via the close event.
 async function endCharge() {
   basket.clear();
   renderAll();
+  if (closedByServer) {
+    closedByServer = false;
+    return;
+  }
   try {
     await api("POST", "/api/idle");
   } catch { /* the display will resync on its next event */ }
@@ -154,14 +171,17 @@ $("cancelCharge").onclick = () => $("qrDlg").close();
 
 // --- settings --------------------------------------------------------------
 
-function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: 0 }) {
+// A new row has no price (null), so it stays blank and an untouched blank row
+// is skipped on save. A saved price of 0 renders as "0,00": left empty, saving
+// that named row would fail as an invalid price.
+function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.id = p.id;
   row.innerHTML =
     `<input class="name" value="${escapeHtml(p.name)}" placeholder="Namn">` +
     `<input class="price" inputmode="decimal" value="${
-      p.priceOre ? formatOre(p.priceOre) : ""
+      Number.isInteger(p.priceOre) ? formatOre(p.priceOre) : ""
     }" placeholder="0,00">`;
   const del = document.createElement("button");
   del.className = "icon-btn";
@@ -252,6 +272,20 @@ async function connect() {
   try {
     const { ticket } = await api("POST", "/api/stream-ticket");
     const es = new EventSource(`/api/events?ticket=${encodeURIComponent(ticket)}`);
+    // The first `state` event replays the room's current state. The basket and
+    // the QR dialog live only in page memory, so after a reload (or a mobile
+    // browser discarding the backgrounded tab) this is what brings back an open
+    // charge and its Klar/Avbryt. Without it the display keeps a payable QR
+    // that nothing on this page can clear.
+    es.addEventListener("state", (e) => {
+      const s = JSON.parse(e.data);
+      if (s.state === "charge") {
+        if (!$("qrDlg").open) showCharge(s);
+      } else if ($("qrDlg").open) {
+        closedByServer = true;
+        $("qrDlg").close();
+      }
+    });
     es.addEventListener("presence", (e) => {
       $("dot").classList.toggle("on", JSON.parse(e.data).displays > 0);
     });
