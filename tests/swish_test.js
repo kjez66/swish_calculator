@@ -41,6 +41,19 @@ Deno.test("sanitizeMessage strips control characters and collapses whitespace", 
   assertEquals(sanitizeMessage("bell\x07here"), "bellhere");
 });
 
+Deno.test("sanitizeMessage deletes C1 controls and bidi overrides/isolates", () => {
+  // C1 controls U+0080-U+009F (incl. U+0085 NEL, which \s does not match): deleted.
+  assertEquals(sanitizeMessage("a\u0080b\u0085c\u009Fd"), "abcd");
+  // Bidi marks, embeddings/overrides and isolates would let a store name
+  // visually reorder the note (e.g. move the order number): deleted.
+  assertEquals(
+    sanitizeMessage(
+      "\u200EK\u200Fa\u202Af\u202Bf\u202Ce\u202D \u202E#\u20667\u2067\u2068\u2069",
+    ),
+    "Kaffe #7",
+  );
+});
+
 Deno.test("sanitizeMessage truncates by code point, not UTF-16 unit or byte", () => {
   assertEquals(MESSAGE_MAX_CHARS, 50);
 

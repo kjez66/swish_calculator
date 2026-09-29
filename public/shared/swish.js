@@ -52,7 +52,8 @@ export function normalizePayee(input) {
 
 /**
  * Clean a note for the message field.
- * Deletes the field separator and non-whitespace control characters outright;
+ * Deletes the field separator, non-whitespace control characters (C0, DEL, C1)
+ * and bidi formatting characters outright;
  * whitespace control characters (tab, CR, LF, ...) collapse into a single space
  * along with any other run of whitespace.
  * @param {string} text
@@ -62,10 +63,14 @@ export function sanitizeMessage(text) {
   const cleaned = String(text ?? "")
     // ';' is the field separator: an unescaped one silently corrupts the amount.
     .replace(/;/g, "")
-    // C0 controls other than \t \n \v \f \r, plus DEL. These carry no meaning in
-    // a note and are deleted rather than turned into whitespace.
+    // C0 controls other than \t \n \v \f \r, plus DEL and the C1 controls
+    // (U+0080-U+009F). These carry no meaning in a note and are deleted rather
+    // than turned into whitespace.
     // deno-lint-ignore no-control-regex
-    .replace(/[\x00-\x08\x0E-\x1F\x7F]/g, "")
+    .replace(/[\x00-\x08\x0E-\x1F\x7F-\x9F]/g, "")
+    // Bidi marks (LRM, RLM), embeddings/overrides and isolates: invisible, and
+    // able to visually reorder the note, e.g. to move or hide the order number.
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
     .replace(/\s+/g, " ")
     .trim();
   // Array.from splits by code point, so 'å' counts as one and an emoji is never
