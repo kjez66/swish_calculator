@@ -6,6 +6,7 @@ const LS = "swish-kassa-room";
 let room = JSON.parse(localStorage.getItem(LS) ?? "null");
 let settings = null;
 let products = [];
+let stateLoaded = false;
 /** @type {Map<string, number>} product id -> quantity */
 const basket = new Map();
 let inFlight = false;
@@ -45,6 +46,13 @@ const ERRORS = {
 
 function renderProducts() {
   $("grid").innerHTML = "";
+  if (!products.length) {
+    // An empty grid with no hint looks broken; say what to do instead.
+    $("grid").innerHTML = `<div class="empty"><p>Inga produkter än.</p>` +
+      `<button class="icon-btn" id="emptyAdd">Lägg till produkter</button></div>`;
+    $("emptyAdd").onclick = openSettings;
+    return;
+  }
   for (const p of [...products].sort((a, b) => a.sortOrder - b.sortOrder)) {
     const qty = basket.get(p.id) ?? 0;
     const btn = document.createElement("button");
@@ -105,6 +113,8 @@ function renderBasket() {
   }
   $("total").textContent = `${formatOre(total)} kr`;
   const configured = Boolean(settings?.storeName && settings?.payeeNumber);
+  // Not before the first /api/state answer: until then nobody knows yet.
+  $("setupHint").hidden = configured || !stateLoaded;
   $("buyBtn").disabled = inFlight || items.length === 0 || !configured;
   // The operator's verb is "take payment", and the amount on the button saves a
   // glance up at the total. On slow market data, say that something is happening.
@@ -199,24 +209,31 @@ $("cancelCharge").onclick = () => $("qrDlg").close();
 // A new row has no price (null), so it stays blank and an untouched blank row
 // is skipped on save. A saved price of 0 renders as "0,00": left empty, saving
 // that named row would fail as an invalid price.
+// Two lines per product, so the name gets the full width on a phone and the
+// price, reorder and delete buttons can all be 44px targets.
 function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   const row = document.createElement("div");
-  row.className = "row";
+  row.className = "product-row";
   row.dataset.id = p.id;
-  row.innerHTML =
-    `<input class="name" value="${escapeHtml(p.name)}" placeholder="Namn">` +
+  row.innerHTML = `<input class="name" value="${escapeHtml(p.name)}" placeholder="Namn"` +
+    ` aria-label="Produktnamn">` +
+    // Visible "Pris … kr" labels: a placeholder alone disappears once typed in.
+    `<div class="row"><span class="unit" aria-hidden="true">Pris</span>` +
     `<input class="price" inputmode="decimal" value="${
       Number.isInteger(p.priceOre) ? formatOre(p.priceOre) : ""
-    }" placeholder="0,00">`;
-  const del = document.createElement("button");
-  del.className = "icon-btn";
-  del.textContent = "✕";
-  del.onclick = () => row.remove();
-  row.append(del);
+    }" placeholder="0,00" aria-label="Pris i kronor">` +
+    `<span class="unit" aria-hidden="true">kr</span>` +
+    `<button class="icon-btn up" aria-label="Flytta upp">↑</button>` +
+    `<button class="icon-btn down" aria-label="Flytta ned">↓</button>` +
+    `<button class="icon-btn del" aria-label="Ta bort produkt">✕</button>` +
+    `</div>`;
+  row.querySelector(".up").onclick = () => row.previousElementSibling?.before(row);
+  row.querySelector(".down").onclick = () => row.nextElementSibling?.after(row);
+  row.querySelector(".del").onclick = () => row.remove();
   return row;
 }
 
-$("settingsBtn").onclick = () => {
+function openSettings() {
   $("fName").value = settings?.storeName ?? "";
   $("fPayee").value = settings?.payeeNumber ?? "";
   $("productRows").innerHTML = "";
@@ -224,33 +241,67 @@ $("settingsBtn").onclick = () => {
   for (const p of sorted.length ? sorted : [undefined]) {
     $("productRows").append(productRow(p));
   }
-  $("settingsError").textContent = "";
+  clearFieldErrors();
   $("settingsDlg").showModal();
+}
+$("settingsBtn").onclick = openSettings;
+$("setupOpen").onclick = openSettings;
+$("addRow").onclick = () => {
+  const row = productRow();
+  $("productRows").append(row);
+  row.querySelector(".name").focus();
 };
-$("addRow").onclick = () => $("productRows").append(productRow());
 $("cancelSettings").onclick = () => $("settingsDlg").close();
 
-$("saveSettings").onclick = async () => {
+// Errors are shown at the field they concern, not in one line at the bottom.
+function clearFieldErrors() {
   $("settingsError").textContent = "";
-  const rows = [...$("productRows").children];
+  for (const el of $("settingsDlg").querySelectorAll(".field-err")) el.remove();
+  for (const el of $("settingsDlg").querySelectorAll("[aria-invalid]")) {
+    el.removeAttribute("aria-invalid");
+    el.removeAttribute("aria-describedby");
+  }
+}
+
+/** Mark `input` invalid and put `message` right below `after` (default: the input). */
+function fieldError(input, message, after = input) {
+  const msg = document.createElement("p");
+  msg.className = "field-err";
+  msg.id = `err-${crypto.randomUUID()}`;
+  msg.textContent = message;
+  after.after(msg);
+  input.setAttribute("aria-invalid", "true");
+  input.setAttribute("aria-describedby", msg.id);
+  return input;
+}
+
+$("saveSettings").onclick = async () => {
+  clearFieldErrors();
   const next = [];
-  try {
-    rows.forEach((row, i) => {
-      const name = row.querySelector(".name").value.trim();
-      const priceRaw = row.querySelector(".price").value.trim();
-      if (!name && !priceRaw) return;
-      if (!name) throw new Error("Alla produkter behöver ett namn.");
+  const invalid = [];
+  [...$("productRows").children].forEach((row, i) => {
+    const nameInput = row.querySelector(".name");
+    const priceInput = row.querySelector(".price");
+    const name = nameInput.value.trim();
+    const priceRaw = priceInput.value.trim();
+    if (!name && !priceRaw) return;
+    if (!name) {
+      invalid.push(fieldError(nameInput, "Produkten behöver ett namn.", row));
+      return;
+    }
+    try {
       next.push({
         id: row.dataset.id,
         name,
         priceOre: parseKronorToOre(priceRaw),
         sortOrder: i,
       });
-    });
-  } catch (err) {
-    $("settingsError").textContent = err.message === "invalid_amount"
-      ? "Ett pris är ogiltigt. Skriv t.ex. 19,90."
-      : err.message;
+    } catch {
+      invalid.push(fieldError(priceInput, "Ogiltigt pris. Skriv t.ex. 19,90.", row));
+    }
+  });
+  if (invalid.length) {
+    invalid[0].focus();
     return;
   }
 
@@ -262,11 +313,14 @@ $("saveSettings").onclick = async () => {
     });
     await api("PUT", "/api/products", next);
   } catch (err) {
-    $("settingsError").textContent = err.message === "invalid_payee"
-      ? "Swish-numret ser inte giltigt ut."
-      : err.message === "invalid_store_name"
-      ? "Ange ett butiksnamn."
-      : "Kunde inte spara. Försök igen.";
+    if (err.message === "invalid_payee") {
+      fieldError($("fPayee"), "Numret ser inte giltigt ut. Skriv t.ex. 070-123 45 67.")
+        .focus();
+    } else if (err.message === "invalid_store_name") {
+      fieldError($("fName"), "Ange ett butiksnamn.").focus();
+    } else {
+      $("settingsError").textContent = "Kunde inte spara. Försök igen.";
+    }
     return; // The dialog stays open: never show a saved state we did not achieve.
   }
   $("settingsDlg").close();
@@ -343,6 +397,7 @@ async function refresh() {
   const state = await api("GET", "/api/state");
   settings = state.settings;
   products = state.products;
+  stateLoaded = true;
   for (const id of [...basket.keys()]) {
     if (!products.some((p) => p.id === id)) basket.delete(id);
   }

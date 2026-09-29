@@ -34,7 +34,12 @@
     <section class="basket">
       <div class="lines" id="lines"></div>
       <div class="total"><span>Totalt</span><span id="total">0,00 kr</span></div>
-      <div class="err" id="error"></div>
+      <div class="err" id="error" role="alert"></div>
+      <!-- Why "Ta betalt" is disabled before setup, with the way out. -->
+      <p class="setup-hint" id="setupHint" hidden>
+        Ange butiksnamn och Swish-nummer för att kunna ta betalt.
+        <button class="link-btn" id="setupOpen">Öppna inställningar</button>
+      </p>
       <button class="buy" id="buyBtn" disabled>Ta betalt</button>
     </section>
 
@@ -47,8 +52,9 @@
       <h3>Produkter</h3>
       <div id="productRows"></div>
       <button class="icon-btn" id="addRow">Lägg till produkt</button>
-      <div class="err" id="settingsError"></div>
-      <div class="row actions">
+      <div class="err" id="settingsError" role="alert"></div>
+      <!-- Sticky, so Spara stays reachable however long the product list gets. -->
+      <div class="row actions sticky-actions">
         <button class="icon-btn" id="cancelSettings">Avbryt</button>
         <button class="buy" id="saveSettings">Spara</button>
       </div>
