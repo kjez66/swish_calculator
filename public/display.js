@@ -77,7 +77,9 @@
   }
 
   // --- pairing -------------------------------------------------------------
-  el("claim").addEventListener("click", function () {
+  // A real form, so the keyboard's Enter / Gå key submits the code too.
+  el("pair").addEventListener("submit", function (e) {
+    e.preventDefault();
     var code = el("code").value.trim();
     el("pairError").textContent = "";
     requestWakeLock(); // acquired here because this is a real user gesture
@@ -103,8 +105,15 @@
   });
 
   // --- live connection -----------------------------------------------------
+  function setOnline(online) {
+    el("status").hidden = online;
+  }
+
   function connect() {
-    if (!creds) return;
+    if (!creds) {
+      setOnline(true);
+      return;
+    }
     fetch("/api/stream-ticket?roomId=" + encodeURIComponent(creds.roomId), {
       method: "POST",
       headers: { Authorization: "Bearer " + creds.displayToken },
@@ -113,6 +122,7 @@
         // The server no longer accepts this pairing (the room is gone):
         // retrying cannot help, so go back to the pair screen.
         forgetPairing();
+        setOnline(true);
         show("pair");
         return null;
       }
@@ -122,9 +132,11 @@
       if (!data) return;
       var es = new EventSource("/api/events?ticket=" + encodeURIComponent(data.ticket));
       es.addEventListener("state", function (e) {
+        setOnline(true);
         renderState(JSON.parse(e.data));
       });
       es.onerror = function () {
+        setOnline(false);
         es.close();
         // A ticket is single-use, so EventSource's built-in retry would reuse a
         // spent one. Reconnect through a fresh ticket instead. The server replays
@@ -132,6 +144,7 @@
         setTimeout(connect, 2000);
       };
     }).catch(function () {
+      setOnline(false);
       setTimeout(connect, 3000);
     });
   }

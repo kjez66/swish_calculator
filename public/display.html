@@ -73,10 +73,62 @@
     }
     #qr svg {
       width: 280px;
-      width: min(68vh, 88vw);
+      width: min(64vh, 88vw);
       height: auto;
       display: block;
       margin: 14px auto 0;
+    }
+    .scan {
+      font-size: 17px;
+      font-size: clamp(15px, 4.2vw, 22px);
+      color: #333;
+      margin-top: 12px;
+    }
+    /* A phone propped up sideways is common, and nobody scrolls a customer display:
+       in landscape the QR takes the left side at nearly full height and the text
+       moves to the right, so everything fits on one screen. */
+    #charge {
+      display: grid;
+      grid-template-areas: "logo" "amount" "note" "qr" "scan";
+    }
+    #charge .logo {
+      grid-area: logo;
+    }
+    #charge .amount {
+      grid-area: amount;
+    }
+    #charge .note {
+      grid-area: note;
+    }
+    #qr {
+      grid-area: qr;
+    }
+    #charge .scan {
+      grid-area: scan;
+    }
+    @media (orientation: landscape) {
+      #charge {
+        grid-template-columns: auto auto;
+        grid-template-rows: 1fr auto auto 1fr;
+        grid-template-areas: "qr logo" "qr amount" "qr note" "qr scan";
+        column-gap: 24px;
+        align-items: center;
+      }
+      #qr svg {
+        width: 80vh;
+        width: min(88vh, 55vw);
+        margin: 0;
+      }
+      #charge .logo {
+        align-self: end;
+      }
+      #charge .scan {
+        align-self: start;
+      }
+      .amount {
+        font-size: 40px;
+        font-size: clamp(28px, 7vw, 72px);
+      }
     }
     .idle-title {
       font-size: 32px;
@@ -84,9 +136,24 @@
       font-weight: 700;
     }
     .hint {
-      color: #777;
+      color: #595959;
       font-size: 14px;
       margin-top: 10px;
+    }
+    #pairError {
+      color: #b00020;
+    }
+    /* Shown while the live connection is down, so the operator can see the
+       display is not following along (it would otherwise look frozen). */
+    .status {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 8px;
+      font-size: 14px;
+      background: #fff4d6;
+      color: #5c4400;
     }
     .repair {
       display: inline-block;
@@ -100,12 +167,13 @@
     </style>
   </head>
   <body>
-    <div id="pair">
-      <p>Ange kopplingskoden från kassan.</p>
-      <input id="code" inputmode="numeric" maxlength="6" placeholder="000000">
-      <div><button id="claim">Koppla</button></div>
-      <p class="hint" id="pairError"></p>
-    </div>
+    <form id="pair">
+      <p><label for="code">Ange kopplingskoden från kassan.</label></p>
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="000000"
+        autocomplete="off">
+      <div><button id="claim" type="submit">Koppla</button></div>
+      <p class="hint" id="pairError" role="alert"></p>
+    </form>
 
     <div id="idle" hidden>
       <div class="idle-title">Välkommen</div>
@@ -119,7 +187,10 @@
       <div class="amount" id="amount"></div>
       <div class="note" id="note"></div>
       <div id="qr"></div>
+      <div class="scan">Öppna Swish-appen och skanna QR-koden</div>
     </div>
+
+    <div class="status" id="status" hidden>Återansluter…</div>
 
     <script src="/display.js"></script>
   </body>
