@@ -9,10 +9,22 @@
   </head>
   <body>
     <header>
-      <span class="dot" id="dot" title="Kunddisplay"></span>
       <h1 id="storeName">Swish-kassa</h1>
-      <button class="icon-btn" id="pairBtn">Koppla display</button>
-      <button class="icon-btn" id="settingsBtn">Inställningar</button>
+      <!-- Connection status in words (not colour alone); tapping it opens pairing. -->
+      <button class="icon-btn status-btn" id="pairBtn">
+        <span class="dot" id="dot" aria-hidden="true"></span>
+        <span id="dotText">Ansluter…</span>
+      </button>
+      <button class="icon-btn gear" id="settingsBtn" aria-label="Inställningar">
+        <!-- Lucide "settings" icon (ISC licence) -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
     </header>
 
     <main>
@@ -36,9 +48,9 @@
       <div id="productRows"></div>
       <button class="icon-btn" id="addRow">Lägg till produkt</button>
       <div class="err" id="settingsError"></div>
-      <div class="row" style="margin-top:14px">
+      <div class="row actions">
         <button class="icon-btn" id="cancelSettings">Avbryt</button>
-        <button class="buy" style="margin:0" id="saveSettings">Spara</button>
+        <button class="buy" id="saveSettings">Spara</button>
       </div>
     </dialog>
 
@@ -63,9 +75,9 @@
       Appen kan inte se om betalningen kommit fram. Kontrollera i din egen
       Swish-app innan du trycker Klar.
     </div>
-        <div class="row" style="margin-top:12px">
+        <div class="row actions">
           <button class="icon-btn" id="cancelCharge">Avbryt</button>
-          <button class="buy" style="margin:0" id="doneCharge">Klar</button>
+          <button class="buy" id="doneCharge">Klar</button>
         </div>
       </div>
     </dialog>

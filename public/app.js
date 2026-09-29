@@ -55,11 +55,17 @@ function renderProducts() {
       }</span>` +
       (qty ? `<span class="qty">${qty}</span>` : "");
     btn.onclick = () => {
+      tapFeedback();
       basket.set(p.id, qty + 1);
       renderAll();
     };
     $("grid").append(btn);
   }
+}
+
+// A short buzz confirms a tap without looking (Android; iOS has no vibrate API).
+function tapFeedback() {
+  navigator.vibrate?.(10);
 }
 
 function renderBasket() {
@@ -69,17 +75,24 @@ function renderBasket() {
     if (!p) continue;
     const row = document.createElement("div");
     row.className = "line";
-    row.innerHTML = `<span class="name">${qty} × ${escapeHtml(p.name)}</span>` +
-      `<span>${formatOre(p.priceOre * qty)}</span>`;
-    const minus = document.createElement("button");
-    minus.textContent = "−";
-    minus.onclick = () => {
+    const name = escapeHtml(p.name);
+    row.innerHTML = `<span class="name">${name}</span>` +
+      `<button class="minus" aria-label="En ${name} mindre">−</button>` +
+      `<span class="qty-n">${qty}</span>` +
+      `<button class="plus" aria-label="En ${name} till">+</button>` +
+      `<span class="sum">${formatOre(p.priceOre * qty)}</span>`;
+    row.querySelector(".minus").onclick = () => {
+      tapFeedback();
       const next = qty - 1;
       if (next > 0) basket.set(id, next);
       else basket.delete(id);
       renderAll();
     };
-    row.prepend(minus);
+    row.querySelector(".plus").onclick = () => {
+      tapFeedback();
+      basket.set(id, qty + 1);
+      renderAll();
+    };
     $("lines").append(row);
   }
 
@@ -298,18 +311,30 @@ async function connect() {
       }
     });
     es.addEventListener("presence", (e) => {
-      $("dot").classList.toggle("on", JSON.parse(e.data).displays > 0);
+      setStatus(JSON.parse(e.data).displays > 0 ? "display" : "none");
     });
     es.onerror = () => {
-      $("dot").classList.remove("on");
+      setStatus("offline");
       es.close();
       // A ticket is single-use, so a reconnect needs a fresh one. EventSource's
       // own retry cannot do that for us.
       setTimeout(connect, 3000);
     };
   } catch {
+    setStatus("offline");
     setTimeout(connect, 5000);
   }
+}
+
+// The header's status button says in words what the dot's colour means.
+const STATUS = {
+  display: { text: "Display ansluten", dot: "on" },
+  none: { text: "Ingen display", dot: "" },
+  offline: { text: "Ingen anslutning", dot: "offline" },
+};
+function setStatus(kind) {
+  $("dotText").textContent = STATUS[kind].text;
+  $("dot").className = `dot ${STATUS[kind].dot}`;
 }
 
 // --- boot ------------------------------------------------------------------
@@ -352,11 +377,16 @@ async function boot() {
       await refresh();
     }
   } catch {
+    setStatus("offline");
     $("error").textContent = "Kunde inte ansluta till servern. Ladda om sidan.";
     return;
   }
   connect();
   if (!settings?.storeName) $("settingsBtn").click();
 }
+
+// iOS Safari applies :active (the pressed look on buttons and product tiles)
+// only when the page has a touchstart listener.
+document.addEventListener("touchstart", () => {}, { passive: true });
 
 boot();
