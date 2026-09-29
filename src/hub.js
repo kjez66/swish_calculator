@@ -113,10 +113,12 @@ export function createHub(store, { channelName = "room-events" } = {}) {
     /**
      * @param {string} roomId
      * @param {object} roomState
+     * @param {{live?: object}} [options] `live` fields go to open streams only and
+     *   are never stored, so a later replay-on-connect cannot resend them.
      */
-    async publish(roomId, roomState) {
+    async publish(roomId, roomState, { live = {} } = {}) {
       await store.setCurrent(roomId, roomState);
-      const data = render(roomState);
+      const data = { ...render(roomState), ...live };
       // Post AND deliver locally: a BroadcastChannel never delivers a message
       // back to the object that posted it. Verified, not assumed.
       channel.postMessage({ roomId, name: "state", data });

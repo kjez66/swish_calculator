@@ -223,6 +223,35 @@ Deno.test("idle returns the room to its welcome state", async () => {
   });
 });
 
+Deno.test("a paid idle thanks the customer live but stores a plain idle", async () => {
+  await withServer(async ({ call, store, hub }) => {
+    const { roomId, t, charge } = await configuredRoom(call);
+    await charge({
+      chargeId: crypto.randomUUID(),
+      items: [{ id: "kaffe", qty: 1 }],
+      expectedTotalOre: 2500,
+    });
+    const events = [];
+    const unsubscribe = await hub.subscribe(roomId, (name, data) => {
+      if (name === "state") events.push(data);
+    });
+    events.length = 0; // drop the replayed charge
+
+    const paid = await call("POST", `/api/idle?roomId=${roomId}`, {
+      ...t,
+      body: { paid: true },
+    });
+    assertEquals(paid.status, 200);
+    assertEquals(events, [{ state: "idle", thanks: true }]);
+    // Stored without `thanks`, so a later reconnect never replays an old "Tack!".
+    assertEquals(await store.getCurrent(roomId), { state: "idle" });
+
+    await call("POST", `/api/idle?roomId=${roomId}`, t);
+    assertEquals(events[1], { state: "idle" });
+    unsubscribe();
+  });
+});
+
 Deno.test("cancelling leaves a gap in the order sequence", async () => {
   await withServer(async ({ call }) => {
     const { roomId, t, charge } = await configuredRoom(call);

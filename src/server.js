@@ -338,7 +338,13 @@ export function createHandler({ store, hub, now = () => new Date() }) {
     if (path === "/api/idle" && req.method === "POST") {
       const auth = await authorize(req, url, "operator");
       if (!auth) return fail("unauthorized", 401);
-      await hub.publish(auth.roomId, { state: "idle" });
+      // `paid: true` (the operator's Klar) makes the display thank the customer
+      // before its welcome screen; Avbryt sends no body. The body is optional.
+      const body = await req.json().catch(() => null);
+      const paid = body?.paid === true;
+      await hub.publish(auth.roomId, { state: "idle" }, {
+        live: paid ? { thanks: true } : {},
+      });
       return json({ ok: true });
     }
 

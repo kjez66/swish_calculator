@@ -36,7 +36,7 @@ const ERRORS = {
   bad_quantity: "Ogiltigt antal.",
   amount_too_low: "Beloppet är under 1 kr.",
   amount_too_high: "Beloppet är orimligt högt. Kontrollera korgen.",
-  stale_total: "Priserna har ändrats. Kontrollera summan och tryck Betala igen.",
+  stale_total: "Priserna har ändrats. Kontrollera summan och tryck Ta betalt igen.",
   charge_in_progress: "En betalning behandlas redan. Försök igen.",
   rate_limited: "För många försök. Vänta en minut.",
 };
@@ -93,6 +93,13 @@ function renderBasket() {
   $("total").textContent = `${formatOre(total)} kr`;
   const configured = Boolean(settings?.storeName && settings?.payeeNumber);
   $("buyBtn").disabled = inFlight || items.length === 0 || !configured;
+  // The operator's verb is "take payment", and the amount on the button saves a
+  // glance up at the total. On slow market data, say that something is happening.
+  $("buyBtn").textContent = inFlight
+    ? "Skapar QR…"
+    : items.length
+    ? `Ta betalt ${formatOre(total)} kr`
+    : "Ta betalt";
   return { items, total };
 }
 
@@ -117,7 +124,7 @@ $("buyBtn").onclick = async () => {
   // Disable immediately: the chargeId makes a retry safe, but not showing two
   // spinners is better than relying on it.
   inFlight = true;
-  $("buyBtn").disabled = true;
+  renderBasket();
   $("error").textContent = "";
   try {
     const res = await api("POST", "/api/charge", {
@@ -146,27 +153,32 @@ function showCharge(c) {
   $("qrAmount").textContent = `${formatOre(c.totalOre)} kr`;
   $("qrNote").textContent = c.message;
   $("qrHolder").innerHTML = c.svg;
-  if (!$("qrDlg").open) $("qrDlg").showModal();
+  if (!$("qrDlg").open) {
+    // Esc and the back gesture close without setting returnValue, so clear the
+    // previous dismissal's reason: an unset reason must read as a cancel.
+    $("qrDlg").returnValue = "";
+    $("qrDlg").showModal();
+  }
 }
 
-// Set when the server, not the operator, ended the charge: the dialog's close
-// handler must then not post /api/idle again.
-let closedByServer = false;
-
-// Runs on every dismissal (Klar, Avbryt, Esc, back gesture) via the close event.
+// Why the QR dialog closed, read from its returnValue in the close handler:
+// "paid"   – Klar: the basket is done, and the display thanks the customer.
+// "server" – the server already went idle; do not post /api/idle again.
+// ""       – Avbryt, Esc or the back gesture: a cancel, which keeps the basket,
+//            because "wait, add a bun" must not mean ringing up everything again.
 async function endCharge() {
-  basket.clear();
-  renderAll();
-  if (closedByServer) {
-    closedByServer = false;
-    return;
+  const reason = $("qrDlg").returnValue;
+  if (reason === "paid") {
+    basket.clear();
+    renderAll();
   }
+  if (reason === "server") return;
   try {
-    await api("POST", "/api/idle");
+    await api("POST", "/api/idle", reason === "paid" ? { paid: true } : undefined);
   } catch { /* the display will resync on its next event */ }
 }
 $("qrDlg").addEventListener("close", endCharge);
-$("doneCharge").onclick = () => $("qrDlg").close();
+$("doneCharge").onclick = () => $("qrDlg").close("paid");
 $("cancelCharge").onclick = () => $("qrDlg").close();
 
 // --- settings --------------------------------------------------------------
@@ -282,8 +294,7 @@ async function connect() {
       if (s.state === "charge") {
         if (!$("qrDlg").open) showCharge(s);
       } else if ($("qrDlg").open) {
-        closedByServer = true;
-        $("qrDlg").close();
+        $("qrDlg").close("server");
       }
     });
     es.addEventListener("presence", (e) => {

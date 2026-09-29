@@ -52,10 +52,25 @@
   });
 
   // --- screens -------------------------------------------------------------
+  var THANKS_MS = 4000;
+  var thanksTimer = null;
+
   function show(which) {
+    clearTimeout(thanksTimer);
     el("pair").hidden = which !== "pair";
     el("idle").hidden = which !== "idle";
+    el("thanks").hidden = which !== "thanks";
     el("charge").hidden = which !== "charge";
+  }
+
+  // After a paid charge the customer sees "Tack!" briefly, then the welcome
+  // screen. A new charge arriving meanwhile replaces it at once (show clears
+  // the timer).
+  function showThanks() {
+    show("thanks");
+    thanksTimer = setTimeout(function () {
+      show("idle");
+    }, THANKS_MS);
   }
 
   // The display runs no payment logic: the server sends the formatted amount
@@ -72,7 +87,9 @@
       show("charge");
     } else {
       lastUpdatedAt = 0;
-      show("idle");
+      // `thanks` is only on the live event for a paid charge, never on a replay.
+      if (data.thanks) showThanks();
+      else show("idle");
     }
   }
 
