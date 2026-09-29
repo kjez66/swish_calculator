@@ -49,7 +49,8 @@ then starts a fresh, empty room.
   iOS it makes the 7-day storage eviction much less likely.
 - **After a lost room, re-pair the display.** Enter settings and products again, then tap
   the status button in the operator's header and scan the pairing QR with the display
-  phone's camera. That replaces the old pairing by itself.
+  phone's camera. That replaces the old pairing by itself. If the camera cannot open the
+  QR, open `/display.html?pair` on the display phone instead and type the code.
 
 ## Setting up the display phone
 

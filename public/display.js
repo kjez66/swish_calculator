@@ -184,14 +184,6 @@
     });
   }
 
-  // "Koppla om" is a plain link to /display.html?pair (handled above). This
-  // asks first, so a customer's stray tap does not unpair the display.
-  el("repair").addEventListener("click", function (e) {
-    if (!confirm("Koppla bort displayen och ange en ny kod?")) {
-      e.preventDefault();
-    }
-  });
-
   if (urlCode) {
     el("code").value = urlCode; // visible if the claim fails, for a retry
     show("pair");
