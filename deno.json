@@ -11,5 +11,5 @@
     "@std/assert": "jsr:@std/assert@1",
     "@std/http/file-server": "jsr:@std/http@1/file-server"
   },
-  "fmt": { "indentWidth": 2, "lineWidth": 90, "exclude": ["docs/"] }
+  "fmt": { "indentWidth": 2, "lineWidth": 90, "exclude": ["docs/", "public/brand/"] }
 }
