@@ -312,7 +312,7 @@ stores `roomId` and `operatorToken`. A setup screen collects store name and Swis
 number, then presents an empty product grid.
 
 **Pairing the display.** The operator taps "Pair display" and a 6-digit code
-appears for 5 minutes. The old phone opens `/display`, enters the code once, and
+appears for 5 minutes. The old phone opens `/display.html`, enters the code once, and
 receives its own `displayToken`. It reconnects unattended on every subsequent
 load. Setup instructions cover adding it to the phone's home screen so it opens
 fullscreen.
@@ -405,8 +405,8 @@ Test-driven, using Deno's built-in test runner.
 | `store_test.js` | KV CRUD; atomic counter increment under concurrency; Stockholm-date key selection across a UTC rollover; idempotency claim and stored-response replay; rate-limit windows |
 | `tokens_test.js` | Token length, URL-safety and uniqueness; six-digit pair codes over the whole range incl. leading zeros; SHA-256 hashing; constant-time compare |
 | `hub_test.js` | Replay-on-subscribe from KV, local fan-out (a channel never echoes to its poster), rendered `svg` and `amountText` on charge events, room isolation, unsubscribe, a throwing subscriber not stopping others |
-| `sse_test.js` | Stream tickets: first event is current state, single-use, a published charge reaches an open stream, a failing presence call unwinds the stream and hub subscription |
-| `server_test.js` | Integration: create room → pair → charge → display stream receives it; every rejection row in section 7; repeated `chargeId` yields the identical response and one order number |
+| `sse_test.js` | Stream tickets: first event is current state, single-use, a published charge reaches an open stream, a failing presence call unwinds the stream and hub subscription, and end to end: create room → pair → charge → display stream receives it |
+| `server_test.js` | Integration: every rejection row in section 7; repeated `chargeId` yields the identical response and one order number |
 | `charge_test.js` | `POST /api/charge` and `/api/idle`: order numbers, idempotent `chargeId`, every rejection row, stale total, amount limits, note truncation that preserves the order number, semicolon injection, malformed items |
 
 `tests/helpers.js` is the shared `withServer` test harness (a handler over a temporary KV, without binding a port). It is not a test file: importing a `*_test.js` module would re-register its tests in the importer.

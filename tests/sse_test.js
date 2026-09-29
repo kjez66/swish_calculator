@@ -185,3 +185,92 @@ Deno.test("a rejecting presence call during start() errors the stream and unsubs
     assertEquals(unsubscribeCalled, true);
   });
 });
+
+Deno.test("end to end: create room, pair, charge, and the display stream receives it", async () => {
+  await withServer(async ({ call, handler }) => {
+    // Operator: create and configure a room.
+    const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();
+    const op = { token: operatorToken };
+    await call("PUT", `/api/settings?roomId=${roomId}`, {
+      ...op,
+      body: { storeName: "Kaffebaren", payeeNumber: "0701234567" },
+    });
+    await call("PUT", `/api/products?roomId=${roomId}`, {
+      ...op,
+      body: [{ id: "kaffe", name: "Kaffe", priceOre: 2500, sortOrder: 0 }],
+    });
+
+    // Display: pair through a code, then open its own stream with its own token.
+    const { code } = await (await call("POST", `/api/pair?roomId=${roomId}`, op)).json();
+    const { displayToken } = await (await call("POST", "/api/pair/claim", {
+      body: { code },
+    })).json();
+    const ticketRes = await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
+      token: displayToken,
+    });
+    assertEquals(ticketRes.status, 200);
+    const { ticket } = await ticketRes.json();
+    const res = await handler(
+      new Request(`http://localhost/api/events?ticket=${ticket}`),
+    );
+    assertEquals(res.status, 200);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    // A read that never resolves must fail the test, not hang it.
+    const read = () => {
+      let timer;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("no SSE event within 3 s")), 3000);
+      });
+      return Promise.race([reader.read(), timeout]).finally(() => clearTimeout(timer));
+    };
+    /** Next named SSE event; comment frames (heartbeats) are skipped. */
+    const nextEvent = async () => {
+      while (true) {
+        const i = buffer.indexOf("\n\n");
+        if (i !== -1) {
+          const frame = buffer.slice(0, i);
+          buffer = buffer.slice(i + 2);
+          const name = /^event: (.+)$/m.exec(frame)?.[1];
+          const data = /^data: (.+)$/m.exec(frame)?.[1];
+          if (name && data) return { name, data: JSON.parse(data) };
+          continue;
+        }
+        const { value, done } = await read();
+        if (done) throw new Error("stream ended before the expected event");
+        buffer += decoder.decode(value, { stream: true });
+      }
+    };
+
+    try {
+      // Wait for the replay first, so the charge below cannot race it.
+      const replay = await nextEvent();
+      assertEquals(replay.name, "state");
+      assertEquals(replay.data.state, "idle");
+
+      const chargeRes = await call("POST", `/api/charge?roomId=${roomId}`, {
+        ...op,
+        body: {
+          chargeId: crypto.randomUUID(),
+          items: [{ id: "kaffe", qty: 2 }],
+          expectedTotalOre: 5000,
+        },
+      });
+      assertEquals(chargeRes.status, 200);
+      const charged = await chargeRes.json();
+
+      const event = await nextEvent();
+      assertEquals(event.name, "state");
+      assertEquals(event.data.state, "charge");
+      assertEquals(event.data.orderNo, charged.orderNo);
+      assertEquals(event.data.orderNo, 1);
+      assertEquals(event.data.amountText, "50,00");
+      assertEquals(event.data.message, "Kaffebaren #1");
+      assertEquals(event.data.svg.startsWith("<svg"), true);
+    } finally {
+      await reader.cancel();
+    }
+  });
+});
