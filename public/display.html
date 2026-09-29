@@ -62,9 +62,18 @@
       color: #444;
       margin-top: 6px;
     }
+    /* The official Swish file, unmodified (Swish's logo rules forbid editing it).
+       The page's white background is the white plate the rules ask for. */
+    .logo {
+      display: block;
+      height: 44px;
+      height: clamp(32px, 6vh, 56px);
+      width: auto;
+      margin: 0 auto 12px;
+    }
     #qr svg {
       width: 280px;
-      width: min(76vh, 88vw);
+      width: min(68vh, 88vw);
       height: auto;
       display: block;
       margin: 14px auto 0;
@@ -100,11 +109,13 @@
 
     <div id="idle" hidden>
       <div class="idle-title">Välkommen</div>
-      <p class="hint">Betala med Swish</p>
-      <a class="repair" id="repair" href="/display.html?pair">Koppla om</a>
+      <p class="hint">Betala med</p>
+      <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
+      <div><a class="repair" id="repair" href="/display.html?pair">Koppla om</a></div>
     </div>
 
     <div id="charge" hidden>
+      <img class="logo" src="/brand/swish-logo.svg" alt="Swish">
       <div class="amount" id="amount"></div>
       <div class="note" id="note"></div>
       <div id="qr"></div>

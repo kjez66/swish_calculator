@@ -119,3 +119,17 @@ Deno.test("unknown API routes 404", async () => {
     assertEquals((await call("GET", "/api/nope")).status, 404);
   });
 });
+
+Deno.test("the official Swish logo is served and shown on both pages", async () => {
+  await withServer(async ({ call }) => {
+    const logo = await call("GET", "/brand/swish-logo.svg");
+    assertEquals(logo.status, 200);
+    assertEquals(logo.headers.get("content-type"), "image/svg+xml");
+    assertEquals((await logo.text()).startsWith("<svg"), true);
+
+    for (const page of ["/display.html", "/"]) {
+      const html = await (await call("GET", page)).text();
+      assertEquals(html.includes('src="/brand/swish-logo.svg"'), true, page);
+    }
+  });
+});

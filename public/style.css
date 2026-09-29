@@ -186,6 +186,18 @@ input {
 .qr-wrap {
   text-align: center;
 }
+/* Swish's logo rules: the unmodified file, on a white or black plate. */
+.logo-plate {
+  display: inline-block;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+.logo-plate img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
 .qr-wrap svg {
   width: min(78vw, 420px);
   height: auto;
