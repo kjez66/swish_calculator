@@ -57,6 +57,10 @@ function renderProducts() {
     const qty = basket.get(p.id) ?? 0;
     const btn = document.createElement("button");
     btn.className = "product";
+    btn.setAttribute(
+      "aria-label",
+      `${p.name}, ${formatOre(p.priceOre)} kr${qty ? `, ${qty} i korgen` : ""}`,
+    );
     btn.innerHTML =
       `<span>${escapeHtml(p.name)}</span><span class="price">${
         formatOre(p.priceOre)
