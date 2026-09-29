@@ -127,6 +127,7 @@ function renderBasket() {
   $("buyBtn").disabled = inFlight || items.length === 0 || !configured;
   // The operator's verb is "take payment", and the amount on the button saves a
   // glance up at the total. On slow market data, say that something is happening.
+  $("buyBtn").classList.toggle("loading", inFlight); // spinner via CSS
   $("buyBtn").textContent = inFlight
     ? "Skapar QR…"
     : items.length

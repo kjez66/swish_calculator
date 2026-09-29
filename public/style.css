@@ -1,40 +1,54 @@
-/* Follows the phone's light/dark setting: light reads far better in direct sun
+/* Calm & refined: the phone's own typeface, soft white cards with faint shadows
+   instead of hard borders, one deep-green accent, gentle motion.
+   Follows the phone's light/dark setting: light reads far better in direct sun
    at a market, dark suits evenings. Every text pair is at least 4.5:1 in both
-   themes; --accent-fill is darker than --accent because white text on the
-   brighter green only reached 3.2:1. */
+   themes; white on --accent is 6.6:1. */
 :root {
-  --bg: #12141a;
-  --panel: #1c1f28;
-  --line: #2c313d;
+  --bg: #0e0f12;
+  --surface: #1a1c21;
+  --surface-2: #24272e;
+  --hairline: #2c2f37;
   --text: #f2f4f8;
-  --muted: #99a1b3;
-  --accent: #00a54f;
-  --accent-fill: #007f3f;
+  --muted: #9aa1b0;
+  --accent: #0f6b43;
+  --accent-soft: #173226;
+  --dot-on: #22a06b;
   --danger: #ff6b6b;
   --warn: #e0a800;
-  --pressed: #243129;
   --focus: #7cc4ff;
   --warn-bg: #3a2f14;
   --warn-text: #f0d79a;
   /* Input fields are drawn only by their border, so it must reach 3:1
-     against its surroundings (WCAG 1.4.11): 5.3:1 here, 4.2:1 in light. */
+     against its surroundings (WCAG 1.4.11): 5.2:1 here, 4.2:1 in light. */
   --field-border: #8a93a6;
+  /* Shadows barely show on dark surfaces, so dark cards also get a hairline. */
+  --card-border: 1px solid var(--hairline);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-up: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.6);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f6f7f9;
-    --panel: #ffffff;
-    --line: #d5d9e0;
-    --text: #14171f;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef0f3;
+    --hairline: #e3e6eb;
+    --text: #15171c;
     --muted: #5b6270;
+    --accent-soft: #e6f2ec;
+    --dot-on: #1a8a55;
     --danger: #c62828;
     --warn: #b07d00;
-    --pressed: #e3f3ea;
     --focus: #0b62c4;
     --warn-bg: #fff4d6;
     --warn-text: #5c4400;
     --field-border: #767d8a;
+    --card-border: 0;
+    --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 6px rgba(16, 24, 40, 0.06);
+    --shadow-up: 0 -8px 24px rgba(16, 24, 40, 0.08);
+    --shadow-dialog: 0 24px 56px rgba(16, 24, 40, 0.2);
     color-scheme: light;
   }
 }
@@ -49,8 +63,8 @@
    under it (WCAG 2.4.11). --basket-h is kept current by app.js; the fallback
    is the basket's maximum height. */
 html {
-  scroll-padding-bottom: calc(28vh + 190px);
-  scroll-padding-bottom: calc(var(--basket-h, calc(28vh + 190px)) + 12px);
+  scroll-padding-bottom: calc(28vh + 200px);
+  scroll-padding-bottom: calc(var(--basket-h, calc(28vh + 200px)) + 16px);
 }
 .sr-only {
   position: absolute;
@@ -65,22 +79,42 @@ html {
 }
 body {
   margin: 0;
-  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* The phone's own typeface (San Francisco on iPhone, Roboto on Android):
+     already refined, and nothing to download at a market stall. */
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
+/* Money never jiggles as digits change. */
+.product .price,
+.line .qty-n,
+.line .sum,
+.total,
+.buy,
+.amount-big,
+.pair-code {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- header ---------------------------------------------------------------- */
+/* Store name on top with the connection status as a quiet line under it, and
+   the gear to the right: the name gets the full width instead of an ellipsis. */
 header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name gear" "status gear";
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
+  column-gap: 12px;
+  padding: 16px 16px 8px;
 }
 header h1 {
-  font-size: 17px;
+  grid-area: name;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
-  flex: 1;
   min-width: 0;
   /* A long store name is cut short rather than wrapping the header. */
   white-space: nowrap;
@@ -89,119 +123,165 @@ header h1 {
 }
 .dot {
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--danger);
 }
 .dot.on {
-  background: var(--accent);
+  background: var(--dot-on);
 }
 .dot.offline {
   background: var(--warn);
 }
+
+/* --- buttons ---------------------------------------------------------------- */
 /* Fast, repeated taps are this page's main interaction: no double-tap zoom, no
-   grey tap flash, and a visible pressed state on every button. */
+   grey tap flash, and a quick, visible press on every button. */
 button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
   font: inherit;
+  transition: transform 0.12s var(--ease), background-color 0.12s var(--ease);
 }
 button:active:not(:disabled) {
   transform: scale(0.97);
 }
 .icon-btn {
-  background: none;
-  border: 1px solid var(--line);
+  background: var(--surface);
+  border: var(--card-border);
+  box-shadow: var(--shadow-1);
   color: var(--text);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 12px;
+  padding: 8px 14px;
   font-size: 15px;
+  font-weight: 500;
   min-height: 44px;
   min-width: 44px;
 }
 .icon-btn:active {
-  background: var(--line);
+  background: var(--surface-2);
 }
 .status-btn {
+  grid-area: status;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+  /* A quiet text line, not a pill; still a 44px-tall target for the thumb. */
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: -6px 0 -8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.status-btn:active {
+  background: none;
 }
 .gear {
+  grid-area: gear;
   display: grid;
   place-items: center;
   padding: 0;
+  border-radius: 50%;
 }
+
+/* --- products --------------------------------------------------------------- */
 main {
-  /* Room for the fixed basket at its tallest (lines capped at 28vh), so a full
-     basket never covers the last row of products. */
-  padding: 12px 16px calc(28vh + 190px);
+  /* Room for the fixed basket at its tallest, so a full basket never covers
+     the last row of products. */
+  padding: 8px 16px calc(28vh + 200px);
+  padding-bottom: calc(var(--basket-h, calc(28vh + 200px)) + 16px);
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
 }
 .product {
-  min-height: 74px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--panel);
+  min-height: 88px;
+  border-radius: 16px;
+  border: var(--card-border);
+  box-shadow: var(--shadow-1);
+  background: var(--surface);
   color: var(--text);
-  padding: 8px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 6px;
   text-align: left;
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
   position: relative;
+  /* Long Swedish compounds ("Kardemummabulle") wrap inside the card. */
+  overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 .product:active {
-  border-color: var(--accent);
-  background: var(--pressed);
+  background: var(--accent-soft);
 }
 .product .price {
   color: var(--muted);
   font-size: 15px;
+  font-weight: 400;
 }
 .product .qty {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 22px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--accent-fill);
+  top: -7px;
+  right: -7px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--accent);
   color: #fff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   display: grid;
   place-items: center;
-  padding: 0 6px;
+  padding: 0 7px;
+  box-shadow: 0 0 0 2px var(--bg);
 }
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 0;
+}
+
+/* --- basket: a bottom sheet ------------------------------------------------- */
 .basket {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--panel);
-  border-top: 1px solid var(--line);
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: var(--card-border);
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--shadow-up);
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
 }
 .lines {
   max-height: 28vh;
   overflow-y: auto;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .line {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
-  font-size: 15px;
+  padding: 6px 0;
+  font-size: 16px;
+}
+.line + .line {
+  border-top: 1px solid var(--hairline);
 }
 .line .name {
   flex: 1;
@@ -210,141 +290,76 @@ main {
 .line .qty-n {
   min-width: 24px;
   text-align: center;
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 .line .sum {
   min-width: 64px;
   text-align: right;
-  font-variant-numeric: tabular-nums;
+  color: var(--muted);
 }
 .line button {
   width: 44px;
   height: 44px;
   flex: none;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: none;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface-2);
   color: var(--text);
   font-size: 20px;
+  line-height: 1;
 }
 .line button:active {
-  background: var(--line);
+  background: var(--hairline);
 }
 .total {
   display: flex;
   justify-content: space-between;
-  font-size: 22px;
+  align-items: baseline;
+  padding-top: 6px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.total span:first-child {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
 }
 .buy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
+  min-height: 56px;
   margin-top: 10px;
-  padding: 16px;
-  font-size: 19px;
-  font-weight: 700;
+  padding: 0 20px;
+  font-size: 18px;
+  font-weight: 600;
   border: 0;
-  border-radius: 12px;
-  background: var(--accent-fill);
+  border-radius: 999px;
+  background: var(--accent);
   color: #fff;
 }
 .buy:disabled {
-  background: var(--line);
+  background: var(--surface-2);
   color: var(--muted);
 }
-dialog {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
-  color: var(--text);
-  width: 92vw;
-  width: min(560px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  max-height: calc(100dvh - 24px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 16px;
+/* While the charge request is in flight (app.js sets .loading). */
+.buy.loading::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
 }
-.actions {
-  margin-top: 12px;
-}
-.actions .buy {
-  margin: 0;
-  flex: 1;
-}
-dialog::backdrop {
-  background: rgba(0, 0, 0, .6);
-}
-label {
-  display: block;
-  margin: 10px 0 4px;
-  font-size: 15px;
-  color: var(--muted);
-}
-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  border-radius: 8px;
-  border: 1px solid var(--field-border);
-  background: var(--bg);
-  color: var(--text);
-}
-.row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.product-row {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-}
-.product-row .row {
-  margin: 0;
-}
-.product-row .row + .row {
-  margin-top: 6px;
-}
-/* "Namn" and "Pris" share a width so both inputs start in line. */
-.product-row .row > .unit:first-child {
-  flex: none;
-  width: 40px;
-}
-.product-row input.name {
-  flex: 1;
-  min-width: 0;
-}
-.product-row input.price {
-  flex: 1;
-  min-width: 0;
-}
-.unit {
-  font-size: 14px;
-  color: var(--muted);
-}
-input[aria-invalid] {
-  border-color: var(--danger);
-}
-.field-err {
-  color: var(--danger);
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-/* The dialog is the scroll container, so this pins Avbryt/Spara to its bottom
-   edge (the negative offset cancels the dialog's own padding). */
-.sticky-actions {
-  position: sticky;
-  bottom: -16px;
-  background: var(--panel);
-  margin: 12px -16px -16px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--line);
-}
-.empty {
-  grid-column: 1 / -1;
-  text-align: center;
-  color: var(--muted);
-  padding: 32px 0;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .setup-hint {
   font-size: 15px;
@@ -360,6 +375,131 @@ input[aria-invalid] {
   font-size: 15px;
   min-height: 44px;
 }
+.err {
+  color: var(--danger);
+  font-size: 14px;
+  min-height: 20px;
+}
+
+/* --- dialogs ---------------------------------------------------------------- */
+dialog {
+  border: var(--card-border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-dialog);
+  width: 92vw;
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px;
+}
+dialog[open] {
+  animation: dialog-in 0.2s var(--ease);
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+/* Blur says "the page behind is on hold"; plain dim where blur is unsupported. */
+dialog::backdrop {
+  background: rgba(10, 12, 16, 0.6);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  dialog::backdrop {
+    background: rgba(10, 12, 16, 0.4);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+}
+dialog h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+dialog h3 {
+  margin: 20px 0 6px;
+  font-size: 17px;
+}
+.actions {
+  margin-top: 16px;
+}
+.actions .buy {
+  margin: 0;
+  flex: 1;
+}
+/* The dialog is the scroll container, so this pins Avbryt/Spara to its bottom
+   edge (the negative offset cancels the dialog's own padding). */
+.sticky-actions {
+  position: sticky;
+  bottom: -20px;
+  background: var(--surface);
+  margin: 16px -20px -20px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* --- forms ------------------------------------------------------------------ */
+label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 15px;
+  color: var(--muted);
+}
+input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--field-border);
+  background: var(--surface);
+  color: var(--text);
+}
+input[aria-invalid] {
+  border-color: var(--danger);
+}
+.field-err {
+  color: var(--danger);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.product-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.product-row .row {
+  margin: 0;
+}
+.product-row .row + .row {
+  margin-top: 6px;
+}
+/* "Namn" and "Pris" share a width so both inputs start in line. */
+.product-row .row > .unit:first-child {
+  flex: none;
+  width: 40px;
+}
+.product-row input.name,
+.product-row input.price {
+  flex: 1;
+  min-width: 0;
+}
+.unit {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* --- charge and pairing ----------------------------------------------------- */
 .qr-wrap {
   text-align: center;
 }
@@ -367,12 +507,13 @@ input[aria-invalid] {
 .logo-plate {
   display: inline-block;
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px 14px;
+  box-shadow: var(--shadow-1);
 }
 .logo-plate img {
   display: block;
-  height: 32px;
+  height: 28px;
   width: auto;
 }
 /* The operator's QR is the fallback when no display is paired, so it is sized to
@@ -383,36 +524,33 @@ input[aria-invalid] {
   width: 60vw;
   width: min(64vw, 42vh, 360px);
   height: auto;
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-1);
 }
 .amount-big {
-  font-size: 34px;
-  font-weight: 800;
-  margin: 8px 0 2px;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 12px 0 2px;
 }
 .note {
   color: var(--muted);
   font-size: 15px;
+  margin: 0 0 10px;
 }
 .warn {
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
   font-size: 15px;
   background: var(--warn-bg);
   color: var(--warn-text);
 }
-.err {
-  color: var(--danger);
-  font-size: 14px;
-  min-height: 20px;
-}
 .pair-code {
   font-size: 40px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 6px;
   text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 .pair-code.pending {
   font-size: 16px;
@@ -427,5 +565,18 @@ input[aria-invalid] {
   width: 160px;
   width: min(48vw, 30vh, 220px);
   height: auto;
-  border-radius: 8px;
+  border-radius: 12px;
+}
+
+/* Reduce motion: no press scaling, spinning or dialog rise. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  dialog[open] {
+    animation: none !important;
+    transition: none !important;
+  }
+  button:active:not(:disabled) {
+    transform: none;
+  }
 }
