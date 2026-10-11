@@ -119,6 +119,8 @@ export function createHandler({ store, hub, now = () => new Date() }) {
       }
       // Store the normalized form so nothing downstream has to re-parse it.
       await store.setSettings(auth.roomId, { storeName, payeeNumber });
+      // Open displays show the store name; let them update without a reconnect.
+      hub.broadcast(auth.roomId, "room", { storeName });
       return json({ storeName, payeeNumber });
     }
 
@@ -217,6 +219,14 @@ export function createHandler({ store, hub, now = () => new Date() }) {
           };
 
           try {
+            if (role === "display") {
+              // Whose stall this is, for the display's welcome screen. Only the
+              // name: the payee number has no place on a public screen.
+              const settings = await store.getSettings(roomId);
+              if (closed) return cleanup();
+              send("room", { storeName: settings?.storeName ?? null });
+            }
+
             unsubscribe = await hub.subscribe(roomId, send);
             if (closed) return cleanup();
 

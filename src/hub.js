@@ -128,6 +128,18 @@ export function createHub(store, { channelName = "room-events" } = {}) {
       deliverLocally(roomId, "state", data);
     },
 
+    /**
+     * Send a named event to every open stream of the room, across isolates,
+     * without storing it (unlike publish, which is for room state).
+     * @param {string} roomId
+     * @param {string} name
+     * @param {object} data
+     */
+    broadcast(roomId, name, data) {
+      channel.postMessage({ roomId, name, data });
+      deliverLocally(roomId, name, data);
+    },
+
     close() {
       channel.close();
       local.clear();

@@ -260,6 +260,11 @@ Deno.test("end to end: create room, pair, charge, and the display stream receive
     };
 
     try {
+      // First the display learns whose stall it is (for its welcome screen),
+      // and only the name: the Swish number has no business on a public screen.
+      const room = await nextEvent();
+      assertEquals(room, { name: "room", data: { storeName: "Kaffebaren" } });
+
       // Wait for the replay first, so the charge below cannot race it.
       const replay = await nextEvent();
       assertEquals(replay.name, "state");
@@ -284,6 +289,16 @@ Deno.test("end to end: create room, pair, charge, and the display stream receive
       assertEquals(event.data.amountText, "50,00");
       assertEquals(event.data.message, "Kaffebaren #1");
       assertEquals(event.data.svg.startsWith("<svg"), true);
+
+      // Renaming the stall updates an open display without a reconnect.
+      await call("PUT", `/api/settings?roomId=${roomId}`, {
+        ...op,
+        body: { storeName: "Kaffebaren Åsa", payeeNumber: "0701234567" },
+      });
+      assertEquals(await nextEvent(), {
+        name: "room",
+        data: { storeName: "Kaffebaren Åsa" },
+      });
     } finally {
       await reader.cancel();
     }

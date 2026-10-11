@@ -140,6 +140,14 @@
   }
 
   // --- live connection -----------------------------------------------------
+  function setStoreName(name) {
+    var els = document.querySelectorAll(".store-name");
+    for (var i = 0; i < els.length; i++) {
+      els[i].textContent = name || "";
+      els[i].hidden = !name;
+    }
+  }
+
   function setOnline(online) {
     el("status").hidden = online;
   }
@@ -166,6 +174,10 @@
     }).then(function (data) {
       if (!data) return;
       var es = new EventSource("/api/events?ticket=" + encodeURIComponent(data.ticket));
+      // Whose stall this is: shown on the welcome, charge and thank-you screens.
+      es.addEventListener("room", function (e) {
+        setStoreName(JSON.parse(e.data).storeName);
+      });
       es.addEventListener("state", function (e) {
         setOnline(true);
         renderState(JSON.parse(e.data));
