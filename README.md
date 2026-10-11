@@ -15,7 +15,7 @@ Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md`
 - **Default menu.** A new kassa starts with the HK Halmstad P13 kiosk menu (Loka, Capri
   Sun, Läsk, Kaffe, Hembakat, Delicatoboll, Korv med bröd, Wasa Knäcke, Corny, Chips,
   Kexchoklad), so it can sell right away. Change the list in `DEFAULT_PRODUCTS` in
-  `src/store.js`. It only applies to kassor created afterwards.
+  `src/defaults.js`. It only applies to kassor created afterwards.
 - **Basket and running total**, with + and − per line.
 - **Swish QR** on the paired customer display, and on the operator phone as a fallback
   when no display is paired.
@@ -39,82 +39,46 @@ Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md`
 
 ## Run locally
 
-Requires Deno 2 (developed on 2.9).
+Requires Node.js 22 or later (for Wrangler, Cloudflare's tool) and, for the
+pure-module tests, Deno 2.
 
 ```bash
-deno task dev     # http://localhost:8000, restarts on file changes
-deno task start   # the same, without watching
-deno task test
+npm install
+npm run dev       # http://localhost:8787, the real Workers runtime
+npm test          # server tests, inside the Workers runtime
+deno task test    # money, Swish payload, QR and other shared code
 ```
 
-The server listens on port 8000 on all interfaces, so phones on the same Wi-Fi can open
-`http://<this computer's IP>:8000/` (allow Deno through the firewall if they cannot).
+`package.json` already allows `workerd`'s install script (npm 11 blocks install
+scripts by default). After upgrading Wrangler, allow the new version with
+`npm approve-scripts workerd`.
 
-Local data (kassor, products, sales) lives in a Deno KV SQLite file under Deno's data
-directory, e.g. `%LOCALAPPDATA%\deno\location_data\<hash>\kv.sqlite3` on Windows. It
-survives restarts. Deleting it deletes everything.
+`npm run dev` listens on all interfaces, so phones on the same Wi-Fi can open
+`http://<this computer's IP>:8787/`. Local data lives in `.wrangler/state/`;
+deleting that folder deletes every local kassa.
 
-## Hosting on Deno Deploy
+## Hosting on Cloudflare (free)
 
-> ⚠️ **Deno Deploy is shutting down.** On 9 October 2026 Deno announced that its team is
-> joining Cloudflare and that "Deno Deploy will continue operating for six months before
-> shutting down", which puts the end around **April 2027**. No exact date has been given.
-> The Deno runtime gets bug-fix and security releases for one more year. Deno Deploy
-> works for this season, but plan for [self-hosting](#self-hosting) or another host after
-> that. The old Deploy Classic (dash.deno.com) already closed on 20 July 2026. These steps
-> are for the new Deno Deploy at console.deno.com.
+Runs on the Workers Free plan: a Worker plus SQLite-backed Durable Objects, one
+per kassa. Design and limits: `docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md`.
 
-1. **Push this repository to GitHub.**
-2. **Sign in at [console.deno.com](https://console.deno.com)** with GitHub and create an
-   organization.
-3. **Create the app:** *New App*, then choose the repository. Under *Edit app config*:
-   - **Framework preset:** none
-   - **Install command** and **Build command:** empty
-   - **Runtime configuration:** *Dynamic*, **Entrypoint** `main.js`
-   - **Region:** if you are offered a choice (the `deno deploy create` CLI has a
-     `--region` flag; Deploy has `us`, `eu` and `global`), pick `eu`. One region is
-     enough for a kiosk in Sweden, and it keeps the operator phone and the display on the
-     same servers (see the check below).
-4. **Give it a database.** Deno KV is not automatic on the new Deploy. In the
-   organization go to *Databases → Provision Database → Deno KV*, name it, then press
-   *Assign* and select the app. Deploy keeps a separate database per timeline, so
-   production and each branch preview have their own data. The code needs no change:
-   `Deno.openKv()` without arguments connects to the assigned database.
-5. **Deploy.** Every push to the default branch deploys to production. The app's page in
-   the console shows its default address, which is based on the app's name. A custom
-   domain can be added under the app's *Domains* settings.
-6. **Run the checks** in [Before taking real money](#️-before-taking-real-money), including
-   the two-network test. It matters more on Deploy: the operator phone and the display
-   usually reach different server instances, and the app relies on Deploy's
-   `BroadcastChannel` to pass a charge from one to the other. That works on Deploy
-   Classic. Deno's docs for the new Deploy do not say either way. If the display does
-   not show a charge made on the operator phone, this is why.
+1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com).
+2. `npx wrangler login` (opens the browser once).
+3. `npm run deploy`. The first deploy asks you to pick a `workers.dev`
+   subdomain. The kassa is then at `https://swish-kassa.<subdomain>.workers.dev`.
+4. Optional: a custom domain under the Worker's *Settings → Domains & Routes* in
+   the Cloudflare dashboard.
+5. Run the checks in [Before taking real money](#️-before-taking-real-money).
 
-Nothing carries over from a local run or an older deployment. The operator phone simply
-creates a new kassa (with the default products) the first time it opens the deployed
-site. Enter the store name and Swish number, then pair the display.
+Redeploy after a change with `npm run deploy`. Free-plan headroom for one kassa:
+100,000 requests a day (a device left connected all day pings about 5,800 times),
+and the Durable Object sleeps between events, so it uses almost none of its
+daily duration.
 
 ## Self-hosting
 
-Any always-on machine with Deno 2 can run it: a small VPS, a Raspberry Pi, a server at
-the club. A single process needs no `BroadcastChannel` between machines, so the live
-updates between operator and display just work.
-
-```bash
-deno task start
-```
-
-Put it behind HTTPS (phones need a secure site for the wake lock, and Swish users trust
-it more). With [Caddy](https://caddyserver.com), the whole config is:
-
-```
-kassa.example.se {
-    reverse_proxy localhost:8000
-}
-```
-
-The data is the KV SQLite file described under [Run locally](#run-locally). Back it up if
-the sales log matters to you. Keep the process running with systemd or similar.
+The same code runs on Cloudflare's open-source runtime, `workerd`, so the app is
+not tied to Cloudflare's hosting. That setup is not documented here yet.
 
 ## ⚠️ Before taking real money
 
@@ -181,11 +145,11 @@ switching later is a settings change.
 
 | Path | What |
 |---|---|
-| `main.js` | Entry point: opens KV and starts the server |
-| `src/server.js` | HTTP API (see the design doc for every route) |
-| `src/store.js` | Every Deno KV read and write, and `DEFAULT_PRODUCTS` |
-| `src/hub.js` | Live updates to open pages (Server-Sent Events over `BroadcastChannel`) |
+| `src/worker.js` | Entry: routes `/api/*` to the Durable Objects |
+| `src/kassa.js` | One kassa: settings, products, charges, sales log, live WebSockets |
+| `src/directory.js` | Pair codes and rate limits, shared by all kassor |
+| `src/defaults.js` | `DEFAULT_PRODUCTS`, the menu a new kassa starts with |
 | `public/index.html`, `app.js` | The operator page |
 | `public/display.html`, `display.js` | The customer display |
 | `public/shared/` | Money, Swish payload and sales summary code, shared by browser and server |
-| `tests/` | `deno task test` |
+| `tests/` | `tests/worker/`: `npm test`; the rest: `deno task test` |

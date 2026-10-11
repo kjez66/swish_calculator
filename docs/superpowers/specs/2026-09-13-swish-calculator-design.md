@@ -1,5 +1,10 @@
 # Swish Calculator — Design
 
+> **Hosting and live updates changed on 2026-10-11:** the app now runs on
+> Cloudflare Workers with Durable Objects and WebSockets. See
+> `2026-10-11-cloudflare-workers-design.md`, which replaces sections 5–7
+> (Deno KV, SSE, `BroadcastChannel`, Deno Deploy) of this document.
+
 Date: 2026-09-13
 Revision: 2 (sync layer redesigned for Deno Deploy's multi-isolate runtime)
 Status: Approved, ready for implementation planning
