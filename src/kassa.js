@@ -63,7 +63,10 @@ export class Kassa extends DurableObject {
       const room = await this.ctx.storage.get("room");
       if (!room) return null;
       const displayToken = randomToken();
-      room.displayTokenHashes = [...room.displayTokenHashes, await hashToken(displayToken)];
+      room.displayTokenHashes = [
+        ...room.displayTokenHashes,
+        await hashToken(displayToken),
+      ];
       await this.ctx.storage.put("room", room);
       return displayToken;
     });
@@ -291,7 +294,13 @@ export class Kassa extends DurableObject {
         chargedAt: chargedAt.getTime(),
       });
       await this.#publish(roomState);
-      const response = { orderNo, totalOre, message, payload, svg: render(roomState).svg };
+      const response = {
+        orderNo,
+        totalOre,
+        message,
+        payload,
+        svg: render(roomState).svg,
+      };
       await storage.put(recordKey, {
         response,
         expiresAt: chargedAt.getTime() + CHARGE_RECORD_TTL_MS,

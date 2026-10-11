@@ -95,7 +95,8 @@ test("GET /api/sales needs a valid date; no date means today", async () => {
 
 test("a sale older than 31 days is never listed, and the alarm deletes it", async () => {
   const { roomId, api } = await newRoom();
-  const sales = async (date) => await (await api("GET", `/api/sales?date=${date}`)).json();
+  const sales = async (date) =>
+    await (await api("GET", `/api/sales?date=${date}`)).json();
   const stub = env.KASSA.getByName(roomId);
   const now = Date.now();
   await runInDurableObject(stub, async (_, state) => {
