@@ -5,7 +5,13 @@ into a basket on their phone; an old spare phone facing the customer shows a Swi
 for the exact total. The customer scans it, and their Swish app opens with the payee, the
 amount and a note (`<store name> #<order number>`) already filled in.
 
-Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md`
+**Live:** https://swish-kassa.kjez.workers.dev (operator) and
+https://swish-kassa.kjez.workers.dev/display (customer display), on Cloudflare's free
+plan.
+
+Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md` (the app), with
+`docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md` (hosting and live
+updates, which replace that document's Deno sections).
 
 ## Features
 
@@ -77,23 +83,35 @@ scripts by default). After upgrading Wrangler, allow the new version with
 `http://<this computer's IP>:8787/`. Local data lives in `.wrangler/state/`;
 deleting that folder deletes every local kassa.
 
+**On Windows PowerShell**, `npm` and `npx` may be blocked ("running scripts is disabled
+on this system"). Use `npm.cmd` and `npx.cmd` instead, e.g. `npm.cmd run dev`; they do
+the same without changing the execution policy.
+
 ## Hosting on Cloudflare (free)
 
 Runs on the Workers Free plan: a Worker plus SQLite-backed Durable Objects, one
 per kassa. Design and limits: `docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md`.
 
+Run these in an ordinary terminal window: logging in waits for you in the browser and
+the first deploy asks questions, so they cannot run from a non-interactive shell.
+
 1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com).
-2. `npx wrangler login` (opens the browser once).
-3. `npm run deploy`. The first deploy asks you to pick a `workers.dev`
-   subdomain. The kassa is then at `https://swish-kassa.<subdomain>.workers.dev`.
+2. `npx wrangler login`: the browser opens Cloudflare; click **Allow**. You stay logged
+   in on this computer.
+3. `npm run deploy`. The first deploy asks you to register a `workers.dev` subdomain
+   (this account's is `kjez`). The kassa is then at
+   `https://swish-kassa.<subdomain>.workers.dev`.
 4. Optional: a custom domain under the Worker's *Settings → Domains & Routes* in
    the Cloudflare dashboard.
 5. Run the checks in [Before taking real money](#️-before-taking-real-money).
 
-Redeploy after a change with `npm run deploy`. Free-plan headroom for one kassa:
-100,000 requests a day (a device left connected all day pings about 5,800 times),
-and the Durable Object sleeps between events, so it uses almost none of its
-daily duration.
+**After a change:** run the tests, then `npm run deploy` (`npm.cmd run deploy` in
+PowerShell). Installed apps pick up the new version the next time they load.
+
+Free-plan headroom for one kassa: 100,000 requests a day. A device left connected all
+day sends a heartbeat every 15 s (about 5,800 a day), and the Durable Object sleeps
+between events, so it uses almost none of its daily duration. Usage is under *Workers &
+Pages → swish-kassa → Metrics* in the dashboard.
 
 ## Self-hosting
 
@@ -168,11 +186,16 @@ switching later is a settings change.
 
 | Path | What |
 |---|---|
+| `wrangler.jsonc` | Cloudflare config: entry, static files, Durable Objects |
 | `src/worker.js` | Entry: routes `/api/*` to the Durable Objects |
 | `src/kassa.js` | One kassa: settings, products, charges, sales log, live WebSockets |
 | `src/directory.js` | Pair codes and rate limits, shared by all kassor |
 | `src/defaults.js` | `DEFAULT_PRODUCTS`, the menu a new kassa starts with |
-| `public/index.html`, `app.js` | The operator page |
-| `public/display.html`, `display.js` | The customer display |
+| `src/qr.js`, `src/render.js` | Swish payload → QR code SVG |
+| `public/index.html`, `app.js`, `style.css` | The operator page |
+| `public/display.html`, `display.js` | The customer display (ES5, for old phones) |
 | `public/shared/` | Money, Swish payload and sales summary code, shared by browser and server |
-| `tests/` | `tests/worker/`: `npm test`; the rest: `deno task test` |
+| `public/*.webmanifest`, `sw.js`, `icons/` | Installing as apps (`icons/*.svg` are the sources of the PNGs) |
+| `tests/worker/` | Server tests in the Workers runtime: `npm test` |
+| `tests/*_test.js` | Shared code, pages, PWA files and display.js staying ES5: `deno task test` |
+| `docs/superpowers/` | Design documents and implementation plans |
