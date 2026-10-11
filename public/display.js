@@ -265,4 +265,10 @@
     connect();
     requestWakeLock();
   } else show("pair");
+
+  // Makes the page installable as a fullscreen app (see sw.js). Old phones
+  // without service workers simply skip it and work as before.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  }
 })();

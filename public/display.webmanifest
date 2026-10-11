@@ -1,0 +1,22 @@
+{
+  "id": "/display",
+  "name": "Kunddisplay",
+  "short_name": "Display",
+  "description": "Skärmen mot kunden: visar Swish-QR för det kassan tar betalt för.",
+  "lang": "sv",
+  "start_url": "/display",
+  "scope": "/display",
+  "display": "fullscreen",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icons/display-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/display-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "/icons/display-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -25,6 +25,25 @@ Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md`
   A sale is saved when the operator presses **Klar**. **Avbryt** saves nothing. A sale
   saved by mistake can be removed. **Sales are kept for 31 days**, then deleted
   automatically.
+- **Installable as apps:** the till ("Kassa") and the customer display ("Display",
+  fullscreen) each install on a phone's home screen with their own icon. See
+  [Installing on the phones](#installing-on-the-phones).
+
+## Installing on the phones
+
+- **Android (Chrome):** open the page, then the menu (⋮) → **Installera app** (or accept
+  the prompt). The app shares the browser's storage, so a kassa or pairing made in Chrome
+  carries over.
+- **iPhone (Safari):** open the page, then Dela (□↑) → **Lägg till på hemskärmen**.
+  **An iPhone home-screen app has its own storage, separate from Safari.** So install
+  first and set up inside the app:
+  - Operator: the installed app starts a new kassa. A kassa made in Safari stays there
+    with its sales log, and is not lost, but the app cannot see it.
+  - Display: the app opens on "Koppla displayn"; type the 6-digit code shown in the
+    kassa and press Koppla. Scanning the pairing QR opens Safari, not the app.
+
+The app always loads the latest version when online (see `public/sw.js`), so a new
+deploy reaches the phones at once; offline it only keeps the pages, never the data.
 
 ## Using it
 
@@ -110,8 +129,9 @@ iOS deleting a site's data after 7 days without a visit), the kassa is lost with
 **cannot be recovered**, sales log included. The operator page then starts a fresh kassa
 with the default products.
 
-- **Add the operator page to the home screen.** It is harder to clear by accident, and on
-  iOS it makes the 7-day storage eviction much less likely.
+- **Install the operator page as an app** ([how](#installing-on-the-phones)). It is
+  harder to clear by accident, and on iOS it makes the 7-day storage eviction much less
+  likely.
 - **After a lost kassa, re-pair the display.** Enter the store name and Swish number
   again, then tap the status button in the operator's header and scan the pairing QR with
   the display phone's camera. That replaces the old pairing by itself. If the camera
@@ -125,7 +145,9 @@ with the default products.
    itself. (Or open `/display.html` and type the 6-digit code shown under the QR.) You
    only do this once. If the display then asks for one tap, give it: that tap is what lets
    the browser keep the screen on.
-2. Add the page to the home screen so it opens fullscreen.
+2. Install it as the "Display" app so it opens fullscreen
+   ([how](#installing-on-the-phones)). On an iPhone, install first and pair inside the
+   app by typing the code.
 3. **Set the screen timeout to Never** and **turn off auto-brightness, with brightness at
    maximum.** The page requests a wake lock where the browser supports one, but older
    Safari has no such API, and no web page can set screen brightness at all. A dim screen

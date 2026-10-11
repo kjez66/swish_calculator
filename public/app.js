@@ -766,3 +766,9 @@ new ResizeObserver(([entry]) => {
 }).observe(document.querySelector(".basket"));
 
 boot();
+
+// Makes the page installable as an app (see sw.js). Without it, or where it
+// fails, the page works exactly the same in the browser.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}

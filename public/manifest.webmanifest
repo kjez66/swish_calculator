@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Swish-kassa",
+  "short_name": "Kassa",
+  "description": "Kassan: tryck in varor och ta betalt med Swish-QR på kunddisplayen.",
+  "lang": "sv",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#0f6b43",
+  "icons": [
+    { "src": "/icons/kassa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/kassa-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "/icons/kassa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
