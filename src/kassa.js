@@ -132,10 +132,14 @@ export class Kassa extends DurableObject {
    * @param {object} state
    * @param {object} [live] fields for open sockets only, never stored, so a
    *   later replay cannot repeat them (the display's "Tack!")
+   * @returns {Promise<object>} the rendered state, so a caller that also needs
+   *   the QR (the charge response) does not render it a second time
    */
   async #publish(state, live = {}) {
     await this.ctx.storage.put("current", state);
-    this.#send(this.ctx.getWebSockets(), "state", { ...render(state), ...live });
+    const rendered = render(state);
+    this.#send(this.ctx.getWebSockets(), "state", { ...rendered, ...live });
+    return rendered;
   }
 
   /** @param {Request} request @param {URL} url */
@@ -406,14 +410,8 @@ export class Kassa extends DurableObject {
         })),
         chargedAt: chargedAt.getTime(),
       });
-      await this.#publish(roomState);
-      const response = {
-        orderNo,
-        totalOre,
-        message,
-        payload,
-        svg: render(roomState).svg,
-      };
+      const { svg } = await this.#publish(roomState);
+      const response = { orderNo, totalOre, message, payload, svg };
       await storage.put(recordKey, {
         response,
         expiresAt: chargedAt.getTime() + CHARGE_RECORD_TTL_MS,
