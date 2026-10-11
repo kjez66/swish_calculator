@@ -6,6 +6,10 @@
  * @module
  */
 import { hashToken, randomPairCode, randomToken, safeEqual } from "./tokens.js";
+import { stockholmDate } from "./dates.js";
+import { defaultProducts } from "./defaults.js";
+
+export { stockholmDate };
 
 const PAIR_CODE_TTL_MS = 5 * 60_000;
 const CHARGE_RECORD_TTL_MS = 120_000;
@@ -14,40 +18,6 @@ const RATE_WINDOW_TTL_MS = 120_000;
 const TICKET_TTL_MS = 30_000;
 /** The sales log keeps a sale 31 days, then KV deletes it. */
 const SALE_TTL_MS = 31 * 24 * 60 * 60_000;
-
-/**
- * HK Halmstad P13's kiosk menu, in menu order: a new room starts with it, so the
- * kiosk can sell right away. Prices in whole kronor.
- */
-const DEFAULT_PRODUCTS = [
-  ["Loka", 15],
-  ["Capri Sun", 15],
-  ["Läsk Cola/Fanta", 20],
-  ["Kaffe", 20],
-  ["Hembakat", 15],
-  ["Delicatoboll", 15],
-  ["Korv med bröd", 20],
-  ["Wasa Knäcke", 15],
-  ["Corny", 15],
-  ["Chips", 15],
-  ["Kexchoklad", 15],
-];
-
-/**
- * The order counter must roll over at Stockholm midnight. UTC rolls over at 01:00
- * or 02:00 local, which would reset order numbers mid-evening during a late market.
- * sv-SE formats as YYYY-MM-DD.
- * @param {Date} date
- * @returns {string}
- */
-export function stockholmDate(date) {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Stockholm",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
 
 /**
  * @param {Deno.Kv} kv
@@ -91,14 +61,7 @@ export function createStore(kv, { randomPairCode: drawPairCode = randomPairCode 
     async createRoom() {
       const roomId = crypto.randomUUID();
       const operatorToken = randomToken();
-      // Fresh ids per room: a product id is never reused (see the spec).
-      const products = DEFAULT_PRODUCTS.map(([name, kronor], i) => ({
-        id: crypto.randomUUID(),
-        name,
-        priceOre: kronor * 100,
-        sortOrder: i,
-        enabled: true,
-      }));
+      const products = defaultProducts();
       await kv.atomic()
         .set(["room", roomId], {
           createdAt: Date.now(),

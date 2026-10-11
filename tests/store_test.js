@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
-import { createStore, stockholmDate } from "../src/store.js";
+import { createStore } from "../src/store.js";
 
 async function withStore(fn) {
   const kv = await Deno.openKv(":memory:");
@@ -118,15 +118,6 @@ Deno.test("current state defaults to idle and round-trips", async () => {
     await store.setCurrent(roomId, charge);
     assertEquals(await store.getCurrent(roomId), charge);
   });
-});
-
-Deno.test("stockholmDate uses Stockholm local time, not UTC", () => {
-  // 22:30 UTC on 12 Sep is already 00:30 on 13 Sep in Stockholm (CEST, UTC+2).
-  // Using UTC here would reset order numbers mid-evening during a late market.
-  assertEquals(stockholmDate(new Date("2026-09-12T22:30:00Z")), "2026-09-13");
-  assertEquals(stockholmDate(new Date("2026-09-12T21:30:00Z")), "2026-09-12");
-  // Winter is UTC+1.
-  assertEquals(stockholmDate(new Date("2026-01-12T23:30:00Z")), "2026-01-13");
 });
 
 Deno.test("nextOrderNo increments per day and resets on a new Stockholm date", async () => {

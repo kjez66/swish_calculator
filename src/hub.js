@@ -7,8 +7,7 @@
  * BroadcastChannel is the bus between them.
  * @module
  */
-import { toSvg } from "./qr.js";
-import { formatOre } from "../public/shared/money.js";
+import { render } from "./render.js";
 
 /**
  * @param {ReturnType<import("./store.js").createStore>} store
@@ -18,25 +17,6 @@ export function createHub(store, { channelName = "room-events" } = {}) {
   /** @type {Map<string, Set<(name: string, data: object) => void>>} */
   const local = new Map();
   const channel = new BroadcastChannel(channelName);
-
-  /**
-   * Attach the rendered QR and amount text. KV stores only the payload/total
-   * because rendering is deterministic, so any isolate reproduces identical
-   * output. The display page (Task 11) draws `svg` and `amountText` and runs
-   * no payment logic of its own.
-   * @param {object} roomState
-   */
-  function render(roomState) {
-    if (roomState.state !== "charge") return { ...roomState };
-    return {
-      ...roomState,
-      svg: toSvg(
-        roomState.payload,
-        `Swish QR-kod för ${formatOre(roomState.totalOre)} kr`,
-      ),
-      amountText: formatOre(roomState.totalOre),
-    };
-  }
 
   /**
    * @param {string} roomId
