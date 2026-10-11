@@ -12,6 +12,7 @@ export { Directory } from "./directory.js";
 export { Kassa } from "./kassa.js";
 
 const ROOMS_PER_MINUTE = 10;
+const PAIR_CLAIMS_PER_MINUTE = 20;
 /** Only ids this Worker issued: a guessed name would wake an empty object. */
 const ROOM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** The routes a kassa answers; anything else under /api/ is a 404. */
@@ -43,6 +44,18 @@ export default {
       }
       const roomId = crypto.randomUUID();
       return json(await env.KASSA.getByName(roomId).create(roomId));
+    }
+
+    if (path === "/api/pair/claim" && request.method === "POST") {
+      // Rate limiting is what keeps a 6-digit code from being brute-forced.
+      if (!await directory.allow("pair", await hashToken(ip), PAIR_CLAIMS_PER_MINUTE)) {
+        return fail("rate_limited", 429);
+      }
+      const body = await request.json().catch(() => null);
+      const roomId = await directory.claimPairCode(String(body?.code ?? ""));
+      const displayToken = roomId && await env.KASSA.getByName(roomId).addDisplay();
+      if (!displayToken) return fail("invalid_code", 404);
+      return json({ roomId, displayToken });
     }
 
     if (!KASSA_ROUTES.has(path)) return fail("not_found", 404);
