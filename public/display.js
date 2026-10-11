@@ -179,10 +179,11 @@
     }).then(function (data) {
       if (!data) return;
       var scheme = location.protocol === "https:" ? "wss" : "ws";
-      var ws = new WebSocket(
-        scheme + "://" + location.host + "/api/events?roomId=" +
-          encodeURIComponent(creds.roomId) + "&ticket=" + encodeURIComponent(data.ticket),
-      );
+      // Built first so the call stays on one line: deno fmt would give a
+      // multi-line call a trailing comma, which ES5 browsers cannot parse.
+      var url = scheme + "://" + location.host + "/api/events?roomId=" +
+        encodeURIComponent(creds.roomId) + "&ticket=" + encodeURIComponent(data.ticket);
+      var ws = new WebSocket(url);
       var alive = true;
       var timer = 0;
       var ended = false;

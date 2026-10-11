@@ -4,6 +4,7 @@
     "jsr:@std/assert@1": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:@cloudflare/vitest-plugin@^1.4.0": "1.4.0_vitest@4.1.11__vite@8.3.4___esbuild@0.28.2__esbuild@0.28.2_vite@8.3.4__esbuild@0.28.2",
+    "npm:acorn@8.14.0": "8.14.0",
     "npm:jsqr@1.4.0": "1.4.0",
     "npm:qrcode-generator@1.4.4": "1.4.4",
     "npm:vitest@^4.1.11": "4.1.11_vite@8.3.4__esbuild@0.28.2_esbuild@0.28.2",
@@ -569,6 +570,10 @@
         "tinyrainbow"
       ]
     },
+    "acorn@8.14.0": {
+      "integrity": "sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==",
+      "bin": true
+    },
     "assertion-error@2.0.1": {
       "integrity": "sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA=="
     },
@@ -994,6 +999,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1",
+      "npm:acorn@8.14.0",
       "npm:jsqr@1.4.0",
       "npm:qrcode-generator@1.4.4"
     ],

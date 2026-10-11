@@ -6,6 +6,7 @@
   "imports": {
     "qrcode-generator": "npm:qrcode-generator@1.4.4",
     "jsqr": "npm:jsqr@1.4.0",
+    "acorn": "npm:acorn@8.14.0",
     "@std/assert": "jsr:@std/assert@1"
   },
   "test": { "exclude": ["tests/worker/", "node_modules/"] },
