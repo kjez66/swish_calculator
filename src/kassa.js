@@ -23,6 +23,8 @@ const SALE_TTL_MS = 31 * 24 * 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
 /** storage.delete() takes at most 128 keys per call. */
 const DELETE_BATCH = 128;
+/** Key prefixes the daily alarm deletes from. */
+const PURGEABLE = ["sale:", "ticket:", "charge:", "counter:"];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** A display that has not pinged (or connected) this recently is gone. */
 const PRESENCE_TIMEOUT_MS = 45_000;
@@ -62,7 +64,6 @@ export class Kassa extends DurableObject {
       },
       products: defaultProducts(),
     });
-    await this.ctx.storage.setAlarm(this.now().getTime() + DAY_MS);
     return { roomId, operatorToken };
   }
 
@@ -82,9 +83,12 @@ export class Kassa extends DurableObject {
   }
 
   /**
-   * Daily: delete sales paid more than 31 days ago, expired tickets and charge
-   * records, and order counters older than two days. Reads skip expired
-   * entries too, so nothing outlives its limit while waiting for this.
+   * Daily while there is something to delete: sales paid more than 31 days
+   * ago, expired tickets and charge records, and order counters older than two
+   * days. Reads skip expired entries too, so nothing outlives its limit while
+   * waiting for this. Only armed by those writes and only re-armed while such
+   * keys remain: kassor are never deleted, and a daily wake-up on every
+   * abandoned one would use up the Free plan's daily requests.
    */
   async alarm() {
     const now = this.now().getTime();
@@ -105,7 +109,22 @@ export class Kassa extends DurableObject {
     for (let i = 0; i < doomed.length; i += DELETE_BATCH) {
       await storage.delete(doomed.slice(i, i + DELETE_BATCH));
     }
-    await storage.setAlarm(now + DAY_MS);
+    for (const prefix of PURGEABLE) {
+      if ((await storage.list({ prefix, limit: 1 })).size > 0) {
+        await storage.setAlarm(Date.now() + DAY_MS);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Arm the daily purge after writing a key it deletes, unless it is armed.
+   * From the real clock, not `now`: a past time would fire at once.
+   */
+  async #armPurge() {
+    if ((await this.ctx.storage.getAlarm()) === null) {
+      await this.ctx.storage.setAlarm(Date.now() + DAY_MS);
+    }
   }
 
   /**
@@ -399,6 +418,7 @@ export class Kassa extends DurableObject {
         response,
         expiresAt: chargedAt.getTime() + CHARGE_RECORD_TTL_MS,
       });
+      await this.#armPurge(); // the charge record and the order counter
       return json(response);
     }
 
@@ -419,6 +439,7 @@ export class Kassa extends DurableObject {
               ...sale,
               paidAt: this.now().getTime(),
             });
+            await this.#armPurge();
           }
         }
       }
@@ -459,6 +480,7 @@ export class Kassa extends DurableObject {
         role: auth.role,
         expiresAt: this.now().getTime() + TICKET_TTL_MS,
       });
+      await this.#armPurge(); // an unused ticket stays behind
       return json({ ticket });
     }
 

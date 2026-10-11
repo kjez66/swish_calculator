@@ -93,6 +93,36 @@ test("GET /api/sales needs a valid date; no date means today", async () => {
   expect((await sales("2020-01-01")).sales).toEqual([]);
 });
 
+test("a kassa with nothing to purge schedules no alarm", async () => {
+  // Kassor are never deleted: a daily alarm on every abandoned one would eat
+  // the Free plan's request quota for ever.
+  const { roomId, api } = await newRoom();
+  await api("PUT", "/api/settings", {
+    body: { storeName: "Kiosken", payeeNumber: "0701234567" },
+  });
+  await runInDurableObject(env.KASSA.getByName(roomId), async (_, state) => {
+    expect(await state.storage.getAlarm()).toBe(null);
+  });
+});
+
+test("a sale arms the purge, which stops once nothing is left to purge", async () => {
+  const { roomId, charge, idle } = await configuredRoom();
+  await charge([{ id: "kaffe", qty: 1 }], 2000);
+  await idle(true);
+  const stub = env.KASSA.getByName(roomId);
+  await runInDurableObject(stub, async (instance, state) => {
+    expect(await state.storage.getAlarm()).not.toBe(null);
+    // 32 days on: the sale, its charge record and the order counter are all due.
+    instance.now = () => new Date(Date.now() + 32 * DAY);
+  });
+  expect(await runDurableObjectAlarm(stub)).toBe(true);
+  await runInDurableObject(stub, async (_, state) => {
+    expect(await state.storage.getAlarm()).toBe(null);
+    const left = [...(await state.storage.list()).keys()];
+    expect(left.filter((k) => /^(sale|ticket|charge|counter):/.test(k))).toEqual([]);
+  });
+});
+
 test("a sale older than 31 days is never listed, and the alarm deletes it", async () => {
   const { roomId, api } = await newRoom();
   const sales = async (date) =>
@@ -109,6 +139,8 @@ test("a sale older than 31 days is never listed, and the alarm deletes it", asyn
     });
     await state.storage.put("sale:2026-09-01:000001", sale(1, now - 31 * DAY - 1000));
     await state.storage.put("sale:2026-09-01:000002", sale(2, now - 30 * DAY));
+    // Written behind the API's back, so arm the purge as a Klar would have.
+    await state.storage.setAlarm(now + DAY);
   });
   expect((await sales("2026-09-01")).sales.map((s) => s.orderNo)).toEqual([2]);
   expect(await runDurableObjectAlarm(stub)).toBe(true);
