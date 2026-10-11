@@ -8,6 +8,8 @@
 
 **Tech Stack:** Cloudflare Workers + Durable Objects (SQLite backend), Wrangler 4, Vitest 4.1 + `@cloudflare/vitest-plugin`, plain ES modules, `qrcode-generator@1.4.4`; Deno 2 stays only as the test runner for the pure shared modules.
 
+**Verified before writing the tasks** (spike on Windows, Node 24.19, npm 11.17, wrangler 4.149.0, vitest 4.1.11, @cloudflare/vitest-plugin 1.4.0, workerd 1.20261006.1): `exports.default.fetch` and `env` from `cloudflare:workers`; `getByName` and RPC to a Durable Object; `src/qr.js` and `public/shared/money.js` bundle and run inside it; Stockholm time zone data; `CF-Connecting-IP` and the origin reach the object unchanged; `storage.put(object)`, `list({ prefix })`, `setAlarm`; hibernatable WebSockets with tags, attachments, runtime-answered `ping`/`pong`, `getWebSocketAutoResponseTimestamp`, `readyState` after close; `runInDurableObject` swapping the `now` field; `runDurableObjectAlarm`; `compatibility_date: "2026-10-01"`.
+
 **Spec:** `docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md` (hosting and live updates), on top of `docs/superpowers/specs/2026-09-13-swish-calculator-design.md` (everything else).
 
 ## Global Constraints
@@ -25,7 +27,7 @@
 
 ## Review Focus
 
-1. A phone that loses its network without a close frame: the client must notice within two pings (≤ 30 s) and reconnect, and the operator's "Display ansluten" must drop within 45 s. Pinned by `"a display that stops pinging no longer counts"` in Task 6; the client side is checked by hand in Task 7.
+1. A phone that loses its network without a close frame: the client must notice within two pings (≤ 30 s) and reconnect without waiting for the browser's `onclose`, and the operator's "Display ansluten" must drop within a minute (45 s presence window, checked at the operator's next 15 s `presence` question). Pinned by `"a display that stops pinging no longer counts"` in Task 6; the client side is checked by hand in Task 7.
 2. The operator page reloaded mid-charge: a fresh socket's `hello` must bring back the open charge. Pinned by `"a new socket replays an open charge"` in Task 6.
 3. Two Klar requests arriving together: exactly one sale. Pinned by `"a repeated Klar saves the sale once"` in Task 5.
 4. A stream ticket used after 30 s: refused. Pinned by `"an expired ticket is refused"` in Task 6.
@@ -94,12 +96,19 @@ git switch -c cloudflare-workers
 }
 ```
 
-Then install:
+Then install, pinning the QR library to the version Deno's import map uses:
 
 ```bash
-npm i qrcode-generator@1.4.4
+npm i -E qrcode-generator@1.4.4
 npm i -D wrangler@^4 vitest@^4.1.0 @cloudflare/vitest-plugin
+npm approve-scripts workerd
 ```
+
+npm 11 blocks install scripts by default and warns
+`allow-scripts workerd@… (postinstall: node install.js)`. `approve-scripts`
+allows Cloudflare's runtime to finish installing and records that in
+`package.json` under `allowScripts`, so a fresh `npm install` works too. After
+upgrading Wrangler, run it again for the new `workerd` version.
 
 - [ ] **Step 4: Create `wrangler.jsonc`**
 
@@ -252,8 +261,7 @@ export { Directory } from "./directory.js";
 export { Kassa } from "./kassa.js";
 
 export default {
-  /** @param {Request} request @param {Env} env */
-  async fetch(request, env) {
+  fetch() {
     return fail("not_found", 404);
   },
 };
@@ -473,7 +481,7 @@ const directory = () => env.DIRECTORY.getByName("global");
 
 test("rate limiting counts per scope, per client, per minute", async () => {
   const d = directory();
-  const t = Date.parse("2026-10-11T10:00:05Z");
+  const t = Date.now();
   for (let i = 0; i < 3; i++) expect(await d.allow("rooms", "ipA", 3, t)).toBe(true);
   expect(await d.allow("rooms", "ipA", 3, t)).toBe(false);
   expect(await d.allow("rooms", "ipB", 3, t)).toBe(true);
@@ -483,7 +491,7 @@ test("rate limiting counts per scope, per client, per minute", async () => {
 
 test("pair codes are six digits, single-use and expire after 5 minutes", async () => {
   const d = directory();
-  const t = Date.parse("2026-10-11T10:00:00Z");
+  const t = Date.now();
   const code = await d.createPairCode("room-1", t);
   expect(code).toMatch(/^\d{6}$/);
   expect(await d.claimPairCode(code, t + 1000)).toBe("room-1");
@@ -496,7 +504,7 @@ test("pair codes are six digits, single-use and expire after 5 minutes", async (
 
 test("createPairCode never overwrites a live code from another kassa", async () => {
   const d = directory();
-  const t = Date.parse("2026-10-11T11:00:00Z");
+  const t = Date.now();
   const draws = ["111111", "111111", "222222"];
   let original;
   await runInDurableObject(d, (instance) => {
@@ -568,7 +576,7 @@ export class Directory extends DurableObject {
     const key = `rate:${scope}:${ipHash}:${Math.floor(now / RATE_WINDOW_MS)}`;
     const count = ((await this.ctx.storage.get(key))?.count ?? 0) + 1;
     await this.ctx.storage.put(key, { count, expiresAt: now + 2 * RATE_WINDOW_MS });
-    await this.#schedulePurge(now);
+    await this.#schedulePurge();
     return count <= limit;
   }
 
@@ -583,7 +591,7 @@ export class Directory extends DurableObject {
       const live = await this.ctx.storage.get(key);
       if (live && live.expiresAt > now) continue;
       await this.ctx.storage.put(key, { roomId, expiresAt: now + PAIR_CODE_TTL_MS });
-      await this.#schedulePurge(now);
+      await this.#schedulePurge();
       return code;
     }
   }
@@ -613,9 +621,10 @@ export class Directory extends DurableObject {
     }
   }
 
-  async #schedulePurge(now) {
+  /** From the real clock, not the caller's `now`: a past time would fire at once. */
+  async #schedulePurge() {
     if ((await this.ctx.storage.getAlarm()) === null) {
-      await this.ctx.storage.setAlarm(now + PURGE_DELAY_MS);
+      await this.ctx.storage.setAlarm(Date.now() + PURGE_DELAY_MS);
     }
   }
 }
@@ -1406,11 +1415,11 @@ Add these methods to the class (after `create`):
   }
 
   /**
-   * Store the new state; Task 6 also pushes it to every open socket.
+   * Store the new state. Task 6 adds the push to open sockets and the `live`
+   * parameter (the idle route already passes it).
    * @param {object} state
-   * @param {object} [live] fields for open sockets only, never stored
    */
-  async #publish(state, live = {}) {
+  async #publish(state) {
     await this.ctx.storage.put("current", state);
   }
 ```
@@ -1895,7 +1904,7 @@ Add these methods to the class:
   }
 
   /** @param {WebSocket} ws @param {number} code @param {string} reason */
-  async webSocketClose(ws, code, reason) {
+  webSocketClose(ws, code, reason) {
     try {
       ws.close(code, reason);
     } catch {
@@ -1985,6 +1994,24 @@ async function connect() {
   }
   let alive = true;
   let timer = 0;
+  let ended = false;
+  // Reconnect at once rather than wait for onclose: on a dead network the
+  // closing handshake cannot finish, and the browser may report the close
+  // much later. The old socket's own close is then ignored.
+  const restart = () => {
+    if (ended) return;
+    ended = true;
+    clearInterval(timer);
+    ws.onclose = null;
+    try {
+      ws.close();
+    } catch {
+      // Already closed.
+    }
+    setStatus("offline");
+    // A ticket is single-use, so a reconnect goes through a fresh one.
+    setTimeout(connect, 3000);
+  };
   ws.onopen = () => {
     // "hello" replays the kassa's current state. The basket and the QR dialog
     // live only in page memory, so after a reload (or a mobile browser
@@ -1993,7 +2020,7 @@ async function connect() {
     // nothing on this page can clear.
     ws.send("hello");
     timer = setInterval(() => {
-      if (!alive) return ws.close();
+      if (!alive) return restart();
       alive = false;
       ws.send("ping");
       ws.send("presence");
@@ -2013,12 +2040,7 @@ async function connect() {
       setStatus(data.displays > 0 ? "display" : "none");
     }
   };
-  ws.onclose = () => {
-    clearInterval(timer);
-    setStatus("offline");
-    // A ticket is single-use, so a reconnect goes through a fresh one.
-    setTimeout(connect, 3000);
-  };
+  ws.onclose = restart;
 }
 ```
 
@@ -2059,13 +2081,29 @@ Replace the whole `function connect() { … }` with:
       );
       var alive = true;
       var timer = 0;
+      var ended = false;
+      // Reconnect at once (see app.js): a dead network may delay onclose.
+      var restart = function () {
+        if (ended) return;
+        ended = true;
+        clearInterval(timer);
+        ws.onclose = null;
+        try {
+          ws.close();
+        } catch (e) {
+          // Already closed.
+        }
+        setOnline(false);
+        // A ticket is single-use: reconnect through a fresh one.
+        setTimeout(connect, 2000);
+      };
       ws.onopen = function () {
         // The server replays the store name and current state on hello, so a
         // QR that was showing before a dropped connection reappears by itself.
         ws.send("hello");
         timer = setInterval(function () {
           if (!alive) {
-            ws.close();
+            restart();
             return;
           }
           alive = false;
@@ -2083,12 +2121,7 @@ Replace the whole `function connect() { … }` with:
           renderState(msg.data);
         }
       };
-      ws.onclose = function () {
-        clearInterval(timer);
-        setOnline(false);
-        // A ticket is single-use: reconnect through a fresh one.
-        setTimeout(connect, 2000);
-      };
+      ws.onclose = restart;
     }).catch(function () {
       setOnline(false);
       setTimeout(connect, 3000);
@@ -2111,7 +2144,7 @@ Check, with the operator page and `display.html` in two browser windows (or the 
 2. Pair the display via the status button's code. The operator header shows "Display ansluten".
 3. Ta betalt: the QR appears on the display. Klar: the display says Tack, the sales view lists the sale.
 4. Reload the operator page during a charge: the QR dialog comes back.
-5. Turn off the display phone's Wi-Fi: within 45 s the operator shows "Ingen display"; turn it back on: the display reconnects by itself and shows the current state.
+5. Turn off the display phone's Wi-Fi: within a minute the operator shows "Ingen display"; turn it back on: within about 30 s the display reconnects by itself and shows the current state.
 6. Stop and restart `npm run dev`: both pages reconnect by themselves.
 
 Expected: all six behave as described.
@@ -2211,7 +2244,9 @@ git rm main.js src/server.js src/store.js src/hub.js tests/helpers.js tests/serv
 
 Run: `deno task test` → PASS (money, swish, qr, tokens, dates, sales summary, pages).
 Run: `npm test` → PASS (all Worker tests).
-Run: `rg -n "store\.js|hub\.js|server\.js|main\.js|Deno\.openKv" src public tests` → no matches.
+Run: `git grep -n -E "store\.js|hub\.js|server\.js|main\.js|Deno\.openKv" -- src public tests` → no matches.
+Run: `deno lint src public tests` → no problems.
+Run: `deno fmt --check src/worker.js src/kassa.js src/directory.js src/http.js src/dates.js src/defaults.js src/render.js public/app.js public/display.js tests/worker tests/dates_test.js tests/sales_summary_test.js tests/pages_test.js` → no problems. (Seven older files, e.g. `src/tokens.js`, were already unformatted before this plan; leave them.)
 
 - [ ] **Step 5: Update `README.md`**
 
@@ -2229,6 +2264,10 @@ npm run dev       # http://localhost:8787, the real Workers runtime
 npm test          # server tests, inside the Workers runtime
 deno task test    # money, Swish payload, QR and other shared code
 ```
+
+`package.json` already allows `workerd`'s install script (npm 11 blocks install
+scripts by default). After upgrading Wrangler, allow the new version with
+`npm approve-scripts workerd`.
 
 `npm run dev` listens on all interfaces, so phones on the same Wi-Fi can open
 `http://<this computer's IP>:8787/`. Local data lives in `.wrangler/state/`;
@@ -2293,6 +2332,9 @@ git commit -m "refactor: remove the Deno server; docs for Cloudflare"
 **Files:** none (operational).
 
 - [ ] **Step 1: Log in (the user does this; it opens a browser)**
+
+Both this and the first deploy can ask questions in the terminal, so the user
+runs them (in Claude Code: `! npx wrangler login`, `! npm run deploy`).
 
 Run: `npx wrangler login`
 Expected: "Successfully logged in".
