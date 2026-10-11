@@ -103,8 +103,8 @@ body {
    the gear to the right: the name gets the full width instead of an ellipsis. */
 header {
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "name gear" "status gear";
+  grid-template-columns: 1fr auto auto;
+  grid-template-areas: "name sales gear" "status sales gear";
   align-items: center;
   column-gap: 12px;
   padding: 16px 16px 8px;
@@ -189,6 +189,93 @@ button:active:not(:disabled) {
   place-items: center;
   padding: 0;
   border-radius: 50%;
+}
+.sales-btn {
+  grid-area: sales;
+}
+
+/* --- sales log -------------------------------------------------------------- */
+.sales-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 16px 0 8px;
+}
+.sales-total b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.sales-table th,
+.sales-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  text-align: right;
+}
+.sales-table th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.sales-table :is(th, td):first-child {
+  text-align: left;
+}
+.sales-table td + td,
+.sales-table th + th {
+  padding-left: 12px;
+  white-space: nowrap;
+}
+.sales-orders summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.sales-orders ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sales-orders li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 15px;
+}
+.sales-orders .order-head {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+.sales-orders .order-lines {
+  color: var(--muted);
+  font-size: 14px;
+}
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.order-actions .del-sale {
+  color: var(--danger);
+  font-size: 14px;
+}
+.order-actions .confirm-q {
+  margin-right: auto;
+  font-weight: 600;
+}
+/* Red text, not a red fill: white on the dark theme's red fails 4.5:1. */
+.danger-btn {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 /* --- products --------------------------------------------------------------- */
@@ -497,6 +584,66 @@ input[aria-invalid] {
 .unit {
   font-size: 14px;
   color: var(--muted);
+}
+/* "Aktiv": a switch whose whole label is the 44px target. Off is told by the
+   knob's side and the word's colour, not by colour alone. */
+.toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-left: 4px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+/* The global input rule's min-height and padding would stretch the track into
+   a tall pill with the knob stuck at its top; reset them. */
+.toggle input {
+  appearance: none;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 40px;
+  height: 24px;
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px solid var(--field-border);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.toggle input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--field-border);
+  transition: transform 0.15s var(--ease);
+}
+.toggle input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle input:checked::after {
+  background: #fff;
+  transform: translateX(16px);
+}
+.product-row.off .toggle,
+.product-row.off input.name,
+.product-row.off input.price {
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .toggle input,
+  .toggle input::after {
+    transition: none;
+  }
 }
 
 /* --- charge and pairing ----------------------------------------------------- */

@@ -28,11 +28,64 @@ Deno.test("createRoom issues a room and an operator token that authenticates", a
   });
 });
 
+Deno.test("a new room starts with the kiosk's default products", async () => {
+  await withStore(async (store) => {
+    const a = await store.createRoom();
+    const products = await store.getProducts(a.roomId);
+    assertEquals(
+      products.map(({ name, priceOre, sortOrder }) => [name, priceOre, sortOrder]),
+      [
+        ["Loka", 1500, 0],
+        ["Capri Sun", 1500, 1],
+        ["Läsk Cola/Fanta", 2000, 2],
+        ["Kaffe", 2000, 3],
+        ["Hembakat", 1500, 4],
+        ["Delicatoboll", 1500, 5],
+        ["Korv med bröd", 2000, 6],
+        ["Wasa Knäcke", 1500, 7],
+        ["Corny", 1500, 8],
+        ["Chips", 1500, 9],
+        ["Kexchoklad", 1500, 10],
+      ],
+    );
+    assertEquals(products.every((p) => p.enabled === true), true);
+    // Ids are never reused, so each room gets its own.
+    const b = await store.createRoom();
+    const ids = new Set([...products, ...await store.getProducts(b.roomId)]
+      .map((p) => p.id));
+    assertEquals(ids.size, 2 * products.length);
+  });
+});
+
+Deno.test("a sale older than 31 days is never listed", async () => {
+  await withStore(async (store) => {
+    const { roomId } = await store.createRoom();
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.parse("2026-10-11T12:00:00Z");
+    const save = async (orderNo, paidAt) => {
+      await store.openSale(roomId, {
+        orderNo,
+        date: "2026-09-10",
+        totalOre: 1500,
+        lines: [],
+        chargedAt: paidAt,
+      });
+      await store.closeSale(roomId, orderNo, { paid: true, paidAt });
+    };
+    // KV deletes expired entries only eventually; the read must not wait for it.
+    await save(1, now - 31 * day - 1000);
+    await save(2, now - 31 * day + 60_000);
+    assertEquals(
+      (await store.listSales(roomId, "2026-09-10", now)).map((s) => s.orderNo),
+      [2],
+    );
+  });
+});
+
 Deno.test("settings and products round-trip", async () => {
   await withStore(async (store) => {
     const { roomId } = await store.createRoom();
     assertEquals(await store.getSettings(roomId), null);
-    assertEquals(await store.getProducts(roomId), []);
 
     await store.setSettings(roomId, {
       storeName: "Kaffebaren",

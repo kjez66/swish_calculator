@@ -15,7 +15,20 @@
         <span class="dot" id="dot" aria-hidden="true"></span>
         <span id="dotText">Ansluter…</span>
       </button>
-      <button class="icon-btn gear" id="settingsBtn" aria-label="Inställningar">
+      <button class="icon-btn gear sales-btn" id="salesBtn" aria-label="Försäljning"
+        title="Försäljning">
+        <!-- Lucide "chart-column" icon (ISC licence) -->
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+          <path d="M18 17V9" />
+          <path d="M13 17V5" />
+          <path d="M8 17v-3" />
+        </svg>
+      </button>
+      <button class="icon-btn gear" id="settingsBtn" aria-label="Inställningar"
+        title="Inställningar">
         <!-- Lucide "settings" icon (ISC licence) -->
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -53,6 +66,10 @@
       <label for="fPayee">Swish-nummer</label>
       <input id="fPayee" type="tel" autocomplete="tel" placeholder="070-123 45 67">
       <h3>Produkter</h3>
+      <!-- Phones show no hover titles, so the buttons are explained here too. -->
+      <p class="note">
+        Aktiv: produkten visas i kassan. ↑ ↓ ändrar ordningen, ✕ tar bort produkten.
+      </p>
       <div id="productRows"></div>
       <button class="icon-btn" id="addRow">Lägg till produkt</button>
       <div class="err" id="settingsError" role="alert"></div>
@@ -60,6 +77,21 @@
       <div class="row actions sticky-actions">
         <button class="icon-btn" id="cancelSettings">Avbryt</button>
         <button class="buy" id="saveSettings">Spara</button>
+      </div>
+    </dialog>
+
+    <dialog id="salesDlg" aria-labelledby="salesTitle">
+      <h2 id="salesTitle">Försäljning</h2>
+      <label for="salesDate">Datum</label>
+      <input id="salesDate" type="date">
+      <div id="salesBody"></div>
+      <p class="sr-only" role="status" id="salesAnnounce"></p>
+      <p class="note">
+        Visar köp som markerats Klar. Appen kan inte se om pengarna kom fram, så
+        stäm av mot din Swish-app. Köpen sparas i 31 dagar.
+      </p>
+      <div class="row actions">
+        <button class="buy" id="closeSales">Stäng</button>
       </div>
     </dialog>
 

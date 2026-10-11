@@ -1,4 +1,5 @@
 import { basketTotalOre, formatOre, parseKronorToOre } from "/shared/money.js";
+import { summarizeSales } from "/shared/sales.js";
 
 const $ = (id) => document.getElementById(id);
 const LS = "swish-kassa-room";
@@ -33,7 +34,8 @@ async function api(method, path, body) {
 const ERRORS = {
   not_configured: "Ange butiksnamn och Swish-nummer i inställningar.",
   empty_basket: "Korgen är tom.",
-  unknown_product: "En produkt i korgen finns inte längre. Uppdaterar listan.",
+  unknown_product: "En produkt i korgen finns inte längre eller är avstängd. " +
+    "Uppdaterar listan.",
   bad_quantity: "Ogiltigt antal.",
   amount_too_low: "Beloppet är under 1 kr.",
   amount_too_high: "Beloppet är orimligt högt. Kontrollera korgen.",
@@ -44,16 +46,23 @@ const ERRORS = {
 
 // --- rendering -------------------------------------------------------------
 
+/** Disabled products stay in settings but are not for sale. No flag means on. */
+const isEnabled = (p) => p.enabled !== false;
+
 function renderProducts() {
   $("grid").innerHTML = "";
-  if (!products.length) {
+  const forSale = products.filter(isEnabled);
+  if (!forSale.length) {
     // An empty grid with no hint looks broken; say what to do instead.
-    $("grid").innerHTML = `<div class="empty"><p>Inga produkter än.</p>` +
-      `<button class="icon-btn" id="emptyAdd">Lägg till produkter</button></div>`;
+    const [text, action] = products.length
+      ? ["Alla produkter är avstängda.", "Slå på produkter"]
+      : ["Inga produkter än.", "Lägg till produkter"];
+    $("grid").innerHTML = `<div class="empty"><p>${text}</p>` +
+      `<button class="icon-btn" id="emptyAdd">${action}</button></div>`;
     $("emptyAdd").onclick = openSettings;
     return;
   }
-  for (const p of [...products].sort((a, b) => a.sortOrder - b.sortOrder)) {
+  for (const p of forSale.sort((a, b) => a.sortOrder - b.sortOrder)) {
     const qty = basket.get(p.id) ?? 0;
     const btn = document.createElement("button");
     btn.className = "product";
@@ -168,6 +177,7 @@ $("buyBtn").onclick = async () => {
   // Disable immediately: the chargeId makes a retry safe, but not showing two
   // spinners is better than relying on it.
   inFlight = true;
+  closedOrderNo = null;
   renderBasket();
   $("error").textContent = "";
   try {
@@ -195,6 +205,8 @@ $("buyBtn").onclick = async () => {
  * other, so whichever arrives second must not call showModal() again.
  */
 function showCharge(c) {
+  if (c.orderNo === closedOrderNo) return;
+  shownOrderNo = c.orderNo;
   $("qrAmount").textContent = `${formatOre(c.totalOre)} kr`;
   $("qrNote").textContent = c.message;
   $("qrHolder").innerHTML = c.svg;
@@ -231,8 +243,25 @@ async function endCharge() {
 // then wipe the new QR off the display (and close its dialog here).
 let idleDone = Promise.resolve();
 $("qrDlg").addEventListener("close", endCharge);
-$("doneCharge").onclick = () => $("qrDlg").close("paid");
-$("cancelCharge").onclick = () => $("qrDlg").close();
+// The live `state` event and the POST response both show the charge, in either
+// order, and the later one can arrive after the operator has already closed it
+// (a slow network, a replay on reconnect). Reopening would clear returnValue
+// before the close handler reads it and turn the Klar just pressed into a
+// cancel: no sale saved, basket kept. So showCharge leaves a closed charge
+// closed. Marked synchronously, because the close event fires a task later;
+// cleared by the next charge, since order numbers restart every day.
+let shownOrderNo = null;
+let closedOrderNo = null;
+const markClosed = () => (closedOrderNo = shownOrderNo);
+$("qrDlg").addEventListener("cancel", markClosed); // Esc and the back gesture
+$("doneCharge").onclick = () => {
+  markClosed();
+  $("qrDlg").close("paid");
+};
+$("cancelCharge").onclick = () => {
+  markClosed();
+  $("qrDlg").close();
+};
 
 // --- settings --------------------------------------------------------------
 
@@ -241,6 +270,8 @@ $("cancelCharge").onclick = () => $("qrDlg").close();
 // that named row would fail as an invalid price.
 // Two lines per product, so the name gets the full width on a phone and the
 // price, reorder and delete buttons can all be 44px targets.
+// The "Aktiv" switch takes a product off the till without losing its name,
+// price and place, e.g. when the buns run out.
 function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   const row = document.createElement("div");
   row.className = "product-row";
@@ -248,15 +279,20 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   // Visible "Namn" and "Pris … kr" labels: a placeholder alone disappears once
   // typed in (WCAG 3.3.2). Each aria-label contains its visible label (2.5.3).
   row.innerHTML = `<div class="row"><span class="unit" aria-hidden="true">Namn</span>` +
-    `<input class="name" value="${escapeHtml(p.name)}" aria-label="Namn"></div>` +
+    `<input class="name" value="${escapeHtml(p.name)}" aria-label="Namn">` +
+    `<label class="toggle" title="Visa produkten i kassan">` +
+    `<input type="checkbox" class="enabled" role="switch"${
+      isEnabled(p) ? " checked" : ""
+    }>Aktiv</label></div>` +
     `<div class="row"><span class="unit" aria-hidden="true">Pris</span>` +
     `<input class="price" inputmode="decimal" value="${
       Number.isInteger(p.priceOre) ? formatOre(p.priceOre) : ""
     }" placeholder="0,00" aria-label="Pris i kronor">` +
     `<span class="unit" aria-hidden="true">kr</span>` +
-    `<button class="icon-btn up" aria-label="Flytta upp">↑</button>` +
-    `<button class="icon-btn down" aria-label="Flytta ned">↓</button>` +
-    `<button class="icon-btn del" aria-label="Ta bort produkt">✕</button>` +
+    `<button class="icon-btn up" aria-label="Flytta upp" title="Flytta upp">↑</button>` +
+    `<button class="icon-btn down" aria-label="Flytta ned" title="Flytta ned">↓</button>` +
+    `<button class="icon-btn del" aria-label="Ta bort produkt" title="Ta bort produkt">` +
+    `✕</button>` +
     `</div>`;
   // Moving or removing a row takes the pressed button out of the DOM, which
   // drops keyboard focus; keep it on the button (or, after a delete, on the
@@ -269,6 +305,11 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
     btn.focus();
     announce(where === "up" ? "Flyttad upp" : "Flyttad ned");
   };
+  row.querySelector(".price").oninput = (e) => sanitizePrice(e.currentTarget);
+  const enabled = row.querySelector(".enabled");
+  const syncOff = () => row.classList.toggle("off", !enabled.checked);
+  enabled.onchange = syncOff;
+  syncOff();
   row.querySelector(".up").onclick = (e) => move(e.currentTarget, "up");
   row.querySelector(".down").onclick = (e) => move(e.currentTarget, "down");
   row.querySelector(".del").onclick = () => {
@@ -278,6 +319,17 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
     announce("Produkten borttagen");
   };
   return row;
+}
+
+// A price field takes only digits and one decimal comma (a typed dot becomes
+// one) with at most two decimals, so letters never get as far as Spara.
+// Assigning the value moves the caret to the end, so only do it on a change.
+function sanitizePrice(input) {
+  const [, kronor, decimals] = /^(\d*)(?:[.,](\d{0,2}))?/.exec(
+    input.value.replace(/[^\d.,]/g, ""),
+  );
+  const clean = decimals === undefined ? kronor : `${kronor},${decimals}`;
+  if (clean !== input.value) input.value = clean;
 }
 
 function openSettings() {
@@ -342,6 +394,7 @@ $("saveSettings").onclick = async () => {
         name,
         priceOre: parseKronorToOre(priceRaw),
         sortOrder: i,
+        enabled: row.querySelector(".enabled").checked,
       });
     } catch {
       invalid.push(fieldError(priceInput, "Ogiltigt pris. Skriv t.ex. 19,90.", row));
@@ -373,6 +426,133 @@ $("saveSettings").onclick = async () => {
   $("settingsDlg").close();
   await safeRefresh();
 };
+
+// --- sales log -------------------------------------------------------------
+
+const STOCKHOLM = "Europe/Stockholm";
+// The server files a sale under its Stockholm date; "today" must agree.
+const stockholmDay = (ms) =>
+  new Intl.DateTimeFormat("sv-SE", { timeZone: STOCKHOLM }).format(new Date(ms));
+const todayInStockholm = () => stockholmDay(Date.now());
+// The server keeps a sale 31 days, so the picker offers no earlier date.
+const oldestSalesDay = () => stockholmDay(Date.now() - 30 * 24 * 60 * 60_000);
+const clockTime = (ms) =>
+  new Date(ms).toLocaleTimeString("sv-SE", {
+    timeZone: STOCKHOLM,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+/**
+ * One sale in "Alla köp", with its Ta bort. Removing takes a second tap on a
+ * confirm button in the same place: a Klar undone by mistake cannot be redone.
+ */
+function saleItem(sale, date) {
+  const n = sale.orderNo;
+  const li = document.createElement("li");
+  li.innerHTML =
+    `<div class="order-head"><span>#${n} · ${clockTime(sale.paidAt)}</span>` +
+    `<span>${formatOre(sale.totalOre)} kr</span></div>` +
+    `<div class="order-lines">${
+      sale.lines.map((l) => `${l.qty} × ${escapeHtml(l.name)}`).join(", ")
+    }</div><div class="order-actions"></div>`;
+  const actions = li.querySelector(".order-actions");
+
+  const showRemove = () => {
+    actions.innerHTML =
+      `<button class="link-btn del-sale" aria-label="Ta bort köp #${n}">Ta bort</button>`;
+    actions.querySelector(".del-sale").onclick = showConfirm;
+  };
+  const showConfirm = () => {
+    actions.innerHTML = `<span class="confirm-q">Ta bort köp #${n}?</span>` +
+      `<button class="icon-btn keep">Behåll</button>` +
+      `<button class="icon-btn danger-btn confirm">Ta bort</button>`;
+    const confirm = actions.querySelector(".confirm");
+    actions.querySelector(".keep").onclick = () => {
+      showRemove();
+      actions.querySelector(".del-sale").focus();
+    };
+    confirm.onclick = async () => {
+      confirm.disabled = true;
+      try {
+        await api("DELETE", `/api/sales?date=${date}&orderNo=${n}`);
+      } catch (err) {
+        // Already gone (another phone, or a retry) is the outcome wanted.
+        if (err.message !== "sale_not_found") {
+          confirm.disabled = false;
+          actions.querySelector(".confirm-q").textContent =
+            "Kunde inte ta bort. Försök igen.";
+          return;
+        }
+      }
+      await loadSales({ afterRemoving: n });
+    };
+    confirm.focus();
+  };
+
+  showRemove();
+  return li;
+}
+
+/** @param {{afterRemoving?: number}} [options] the order number just removed */
+async function loadSales({ afterRemoving } = {}) {
+  const date = $("salesDate").value || todayInStockholm();
+  // After a removal the list stays put until the new one is in, rather than
+  // flashing "Hämtar…" under the operator's thumb.
+  if (!afterRemoving) $("salesBody").innerHTML = `<p class="note">Hämtar…</p>`;
+  let sales;
+  try {
+    ({ sales } = await api("GET", `/api/sales?date=${date}`));
+  } catch {
+    $("salesBody").innerHTML = `<p class="err">Kunde inte hämta försäljningen.</p>`;
+    return;
+  }
+  // A slower answer for a date the user has since changed away from.
+  if (($("salesDate").value || todayInStockholm()) !== date) return;
+  const summary = summarizeSales(sales);
+  const said = `${summary.count} köp, totalt ${formatOre(summary.totalOre)} kr.`;
+  // Spoken from inside the dialog: the page's own status region is inert
+  // behind a modal. The table itself is not read out on every load.
+  $("salesAnnounce").textContent = afterRemoving
+    ? `Köp #${afterRemoving} borttaget. ${said}`
+    : said;
+  if (!sales.length) {
+    $("salesBody").innerHTML = `<p class="note sales-total">Inga köp detta datum.</p>`;
+    if (afterRemoving) $("salesDate").focus();
+    return;
+  }
+  const rows = summary.products.map((p) =>
+    `<tr><td>${escapeHtml(p.name)}</td><td>${p.qty}</td>` +
+    `<td>${formatOre(p.totalOre)}</td></tr>`
+  ).join("");
+  $("salesBody").innerHTML =
+    `<div class="sales-total"><span>${summary.count} köp</span>` +
+    `<b>${formatOre(summary.totalOre)} kr</b></div>` +
+    `<table class="sales-table"><thead><tr><th scope="col">Produkt</th>` +
+    `<th scope="col">Antal</th><th scope="col">Summa (kr)</th></tr></thead>` +
+    `<tbody>${rows}</tbody></table>` +
+    `<details class="sales-orders"><summary>Alla köp (${summary.count})</summary>` +
+    `<ol></ol></details>`;
+  // Latest first: after a match, the last sales are the ones to check.
+  const list = $("salesBody").querySelector("ol");
+  for (const sale of [...sales].reverse()) list.append(saleItem(sale, date));
+  if (afterRemoving) {
+    // The removed row's buttons are gone; keep the list open and focus in it.
+    const details = $("salesBody").querySelector("details");
+    details.open = true;
+    details.querySelector("summary").focus();
+  }
+}
+
+$("salesBtn").onclick = () => {
+  $("salesDate").value = todayInStockholm();
+  $("salesDate").max = todayInStockholm();
+  $("salesDate").min = oldestSalesDay();
+  $("salesDlg").showModal();
+  loadSales();
+};
+$("salesDate").onchange = loadSales;
+$("closeSales").onclick = () => $("salesDlg").close();
 
 // --- pairing ---------------------------------------------------------------
 
@@ -461,7 +641,7 @@ async function refresh() {
   products = state.products;
   stateLoaded = true;
   for (const id of [...basket.keys()]) {
-    if (!products.some((p) => p.id === id)) basket.delete(id);
+    if (!products.some((p) => p.id === id && isEnabled(p))) basket.delete(id);
   }
   renderAll();
 }

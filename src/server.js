@@ -16,6 +16,7 @@ import {
 } from "../public/shared/swish.js";
 import { hashToken } from "./tokens.js";
 import { toSvg } from "./qr.js";
+import { stockholmDate } from "./store.js";
 
 const ROOMS_PER_MINUTE = 10;
 const PAIR_CLAIMS_PER_MINUTE = 20;
@@ -141,6 +142,10 @@ export function createHandler({ store, hub, now = () => new Date() }) {
           return fail("invalid_products", 400);
         }
         if (!Number.isInteger(p.sortOrder)) return fail("invalid_products", 400);
+        // Optional: products saved before the flag existed have none, and are on.
+        if (p.enabled !== undefined && typeof p.enabled !== "boolean") {
+          return fail("invalid_products", 400);
+        }
       }
       await store.setProducts(auth.roomId, body);
       return json({ ok: true });
@@ -304,7 +309,10 @@ export function createHandler({ store, hub, now = () => new Date() }) {
       }
       if (items.length === 0) return fail("empty_basket", 400);
 
-      const products = await store.getProducts(auth.roomId);
+      // A disabled product is not for sale: treated as unknown, so a stale
+      // basket is refused rather than charged for something taken off the menu.
+      const products = (await store.getProducts(auth.roomId))
+        .filter((p) => p.enabled !== false);
       let totalOre;
       try {
         totalOre = basketTotalOre(items, products);
@@ -321,7 +329,8 @@ export function createHandler({ store, hub, now = () => new Date() }) {
 
       try {
         const response = await store.claimCharge(auth.roomId, chargeId, async () => {
-          const orderNo = await store.nextOrderNo(auth.roomId, now());
+          const chargedAt = now();
+          const orderNo = await store.nextOrderNo(auth.roomId, chargedAt);
           // The order number must survive truncation: build the suffix first,
           // then leave the store name only as much room as remains, so the
           // displayed note, the stored state and the payload all carry the
@@ -345,6 +354,21 @@ export function createHandler({ store, hub, now = () => new Date() }) {
             payload,
             updatedAt: Date.now(),
           };
+          // What was sold, as named and priced right now: Klar saves this, so
+          // a later rename or price change cannot rewrite the sales log.
+          const byId = new Map(products.map((p) => [p.id, p]));
+          await store.openSale(auth.roomId, {
+            orderNo,
+            date: stockholmDate(chargedAt),
+            totalOre,
+            lines: items.map(({ id, qty }) => ({
+              productId: id,
+              name: byId.get(id).name,
+              priceOre: byId.get(id).priceOre,
+              qty,
+            })),
+            chargedAt: chargedAt.getTime(),
+          });
           await hub.publish(auth.roomId, roomState);
           return { orderNo, totalOre, message, payload, svg: hub.render(roomState).svg };
         });
@@ -362,9 +386,46 @@ export function createHandler({ store, hub, now = () => new Date() }) {
       // before its welcome screen; Avbryt sends no body. The body is optional.
       const body = await req.json().catch(() => null);
       const paid = body?.paid === true;
+      // Klar saves the sale of the charge on screen; Avbryt drops it. A repeat
+      // finds the screen idle or the sale already closed, and saves nothing.
+      const current = await store.getCurrent(auth.roomId);
+      if (current.state === "charge") {
+        await store.closeSale(auth.roomId, current.orderNo, {
+          paid,
+          paidAt: now().getTime(),
+        });
+      }
       await hub.publish(auth.roomId, { state: "idle" }, {
         live: paid ? { thanks: true } : {},
       });
+      return json({ ok: true });
+    }
+
+    // --- sales log ---------------------------------------------------------
+    if (path === "/api/sales" && req.method === "GET") {
+      const auth = await authorize(req, url, "operator");
+      if (!auth) return fail("unauthorized", 401);
+      const date = url.searchParams.get("date") ?? stockholmDate(now());
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail("invalid_date", 400);
+      return json({
+        date,
+        sales: await store.listSales(auth.roomId, date, now().getTime()),
+      });
+    }
+
+    if (path === "/api/sales" && req.method === "DELETE") {
+      const auth = await authorize(req, url, "operator");
+      if (!auth) return fail("unauthorized", 401);
+      const date = url.searchParams.get("date") ?? "";
+      const orderNo = Number(url.searchParams.get("orderNo"));
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isInteger(orderNo) || orderNo < 1
+      ) {
+        return fail("invalid_sale", 400);
+      }
+      if (!await store.deleteSale(auth.roomId, date, orderNo)) {
+        return fail("sale_not_found", 404);
+      }
       return json({ ok: true });
     }
 

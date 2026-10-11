@@ -12,6 +12,26 @@ const CHARGE_RECORD_TTL_MS = 120_000;
 const PRESENCE_TTL_MS = 30_000;
 const RATE_WINDOW_TTL_MS = 120_000;
 const TICKET_TTL_MS = 30_000;
+/** The sales log keeps a sale 31 days, then KV deletes it. */
+const SALE_TTL_MS = 31 * 24 * 60 * 60_000;
+
+/**
+ * HK Halmstad P13's kiosk menu, in menu order: a new room starts with it, so the
+ * kiosk can sell right away. Prices in whole kronor.
+ */
+const DEFAULT_PRODUCTS = [
+  ["Loka", 15],
+  ["Capri Sun", 15],
+  ["Läsk Cola/Fanta", 20],
+  ["Kaffe", 20],
+  ["Hembakat", 15],
+  ["Delicatoboll", 15],
+  ["Korv med bröd", 20],
+  ["Wasa Knäcke", 15],
+  ["Corny", 15],
+  ["Chips", 15],
+  ["Kexchoklad", 15],
+];
 
 /**
  * The order counter must roll over at Stockholm midnight. UTC rolls over at 01:00
@@ -71,11 +91,22 @@ export function createStore(kv, { randomPairCode: drawPairCode = randomPairCode 
     async createRoom() {
       const roomId = crypto.randomUUID();
       const operatorToken = randomToken();
-      await kv.set(["room", roomId], {
-        createdAt: Date.now(),
-        operatorTokenHash: await hashToken(operatorToken),
-        displayTokenHashes: [],
-      });
+      // Fresh ids per room: a product id is never reused (see the spec).
+      const products = DEFAULT_PRODUCTS.map(([name, kronor], i) => ({
+        id: crypto.randomUUID(),
+        name,
+        priceOre: kronor * 100,
+        sortOrder: i,
+        enabled: true,
+      }));
+      await kv.atomic()
+        .set(["room", roomId], {
+          createdAt: Date.now(),
+          operatorTokenHash: await hashToken(operatorToken),
+          displayTokenHashes: [],
+        })
+        .set(["room", roomId, "products"], products)
+        .commit();
       return { roomId, operatorToken };
     },
 
@@ -126,6 +157,71 @@ export function createStore(kv, { randomPairCode: drawPairCode = randomPairCode 
     async nextOrderNo(roomId, date) {
       const key = ["room", roomId, "counter", stockholmDate(date)];
       return await increment(key);
+    },
+
+    /**
+     * Remember what the charge on screen is for, until Klar or Avbryt. Kept out
+     * of `current`, which goes to the customer display. A newer charge simply
+     * replaces an abandoned one.
+     * @param {string} roomId
+     * @param {{orderNo: number, date: string, totalOre: number, lines: object[],
+     *   chargedAt: number}} sale
+     */
+    async openSale(roomId, sale) {
+      await kv.set(["room", roomId, "open-sale"], sale);
+    },
+
+    /**
+     * End the open sale for the charge with `orderNo`. Paid, it is saved under
+     * its charge date; either way it is gone afterwards. The check on the open
+     * sale's versionstamp makes a repeated Klar save it at most once.
+     * @param {string} roomId
+     * @param {number} orderNo the order number of the charge on screen
+     * @param {{paid: boolean, paidAt: number}} outcome
+     * @returns {Promise<boolean>} whether a sale was saved
+     */
+    async closeSale(roomId, orderNo, { paid, paidAt }) {
+      const key = ["room", roomId, "open-sale"];
+      const entry = await kv.get(key);
+      const sale = entry.value;
+      if (!sale || sale.orderNo !== orderNo) return false;
+      const op = kv.atomic().check(entry).delete(key);
+      if (paid) {
+        op.set(["room", roomId, "sale", sale.date, sale.orderNo], { ...sale, paidAt }, {
+          expireIn: SALE_TTL_MS,
+        });
+      }
+      return (await op.commit()).ok && paid;
+    },
+
+    /**
+     * Undo a Klar pressed by mistake.
+     * @param {string} roomId
+     * @param {string} date YYYY-MM-DD, Stockholm time
+     * @param {number} orderNo
+     * @returns {Promise<boolean>} whether there was such a sale
+     */
+    async deleteSale(roomId, date, orderNo) {
+      const key = ["room", roomId, "sale", date, orderNo];
+      const entry = await kv.get(key);
+      if (!entry.value) return false;
+      // Checked, so two taps on two phones report one removal, not two.
+      return (await kv.atomic().check(entry).delete(key).commit()).ok;
+    },
+
+    /**
+     * @param {string} roomId
+     * @param {string} date YYYY-MM-DD, Stockholm time
+     * @param {number} [now] epoch ms
+     * @returns {Promise<object[]>} in order-number order
+     */
+    async listSales(roomId, date, now = Date.now()) {
+      const sales = [];
+      for await (const entry of kv.list({ prefix: ["room", roomId, "sale", date] })) {
+        // KV removes an expired entry only eventually; it must not show meanwhile.
+        if (entry.value.paidAt > now - SALE_TTL_MS) sales.push(entry.value);
+      }
+      return sales;
     },
 
     /**

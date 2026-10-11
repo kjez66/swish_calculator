@@ -165,6 +165,34 @@ Deno.test("absurd totals are refused at both ends", async () => {
   });
 });
 
+Deno.test("a disabled product is kept but cannot be charged", async () => {
+  await withServer(async ({ call }) => {
+    const { roomId, t, products, charge } = await configuredRoom(call);
+    await call("PUT", `/api/products?roomId=${roomId}`, {
+      ...t,
+      body: [{ ...products[0], enabled: false }, products[1]],
+    });
+    const state = await (await call("GET", `/api/state?roomId=${roomId}`, t)).json();
+    assertEquals(state.products[0].enabled, false);
+
+    const res = await charge({
+      chargeId: crypto.randomUUID(),
+      items: [{ id: "kaffe", qty: 1 }],
+      expectedTotalOre: 2500,
+    });
+    assertEquals(res.status, 400);
+    assertEquals((await res.json()).error, "unknown_product");
+
+    // Products saved before the flag existed have no `enabled`; they stay on.
+    const ok = await charge({
+      chargeId: crypto.randomUUID(),
+      items: [{ id: "bulle", qty: 1 }],
+      expectedTotalOre: 1990,
+    });
+    assertEquals(ok.status, 200);
+  });
+});
+
 Deno.test("an unconfigured room cannot charge", async () => {
   await withServer(async ({ call }) => {
     const { roomId, operatorToken } = await (await call("POST", "/api/rooms")).json();

@@ -99,6 +99,7 @@ Deno.test("PUT /api/products validates its input", async () => {
       [{ id: "a", name: "", priceOre: 100, sortOrder: 0 }],
       [{ id: "a", name: "Kaffe", priceOre: -5, sortOrder: 0 }],
       [{ id: "a", name: "Kaffe", priceOre: 1.5, sortOrder: 0 }],
+      [{ id: "a", name: "Kaffe", priceOre: 100, sortOrder: 0, enabled: "no" }],
       [{ id: "a", name: "Kaffe", priceOre: 100, sortOrder: 0 }, {
         id: "a",
         name: "Te",

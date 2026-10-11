@@ -21,7 +21,7 @@ locked.
 
 ### Non-goals (v1)
 
-Sales history and reporting; refunds; discounts; inventory counts; receipts;
+Reporting beyond a per-day sales log (section 5); refunds; discounts; inventory counts; receipts;
 multiple simultaneous operators; offline operation (see section 13).
 
 ### What this app cannot do
@@ -156,9 +156,11 @@ confirmed against a real Swish app, the app must not be used to take money.
 ```
 ["room", roomId]                          → { createdAt, operatorTokenHash, displayTokenHashes[] }
 ["room", roomId, "settings"]              → { storeName, payeeNumber }
-["room", roomId, "products"]              → [{ id, name, priceOre, sortOrder }]
+["room", roomId, "products"]              → [{ id, name, priceOre, sortOrder, enabled? }]
 ["room", roomId, "current"]               → RoomState        (section 6)
 ["room", roomId, "counter", "2026-09-13"] → n
+["room", roomId, "open-sale"]             → the charge on screen's lines, until Klar or Avbryt
+["room", roomId, "sale", date, orderNo]   → { orderNo, date, totalOre, lines[], chargedAt, paidAt }, expireIn 31 days
 ["charge", roomId, chargeId]              → the original charge response, expireIn 120s
 ["presence", roomId, displayId]           → 1, expireIn 30s
 ["pair", code]                            → { roomId }, expireIn 5 minutes
@@ -167,6 +169,13 @@ confirmed against a real Swish app, the app must not be used to take money.
 
 - Prices are **integer öre** everywhere. `priceOre: 1990` is 19,90 kr. Floating
   point never touches a price or a total.
+- A sale is kept 31 days. KV deletes an expired entry only eventually, so
+  `listSales` also skips any sale paid more than 31 days ago.
+- A new room starts with the kiosk's menu (`DEFAULT_PRODUCTS` in `src/store.js`),
+  each product with a fresh id, so the kiosk can sell without typing them in.
+- `enabled: false` takes a product off the till (hidden from the grid, refused
+  by `/api/charge` as `unknown_product`) while keeping it in settings. A missing
+  flag means enabled, so products saved before the flag existed stay on sale.
 - Around 20 products fit comfortably in a single KV value, well inside the 64 KB
   limit. Stored as one array to keep edits atomic. Product `id` is a
   client-generated UUID and is never reused, so a deleted-and-recreated product
@@ -226,7 +235,9 @@ All authenticated routes take `Authorization: Bearer <token>`.
 | POST | `/api/stream-ticket` | either | Returns `{ ticket }`, single-use, valid 30 seconds, carries the caller's role. |
 | GET | `/api/events?ticket=…` | ticket | SSE stream. |
 | POST | `/api/charge` | operator | Body `{ chargeId, items: [{ id, qty }], expectedTotalOre }`. |
-| POST | `/api/idle` | operator | Sets room state to idle. Optional body `{ paid: true }` (the operator's Klar) adds `thanks: true` to the live event only, never to the stored state, so the display shows "Tack!" briefly and a replay cannot repeat it. |
+| POST | `/api/idle` | operator | Sets room state to idle. Optional body `{ paid: true }` (the operator's Klar) adds `thanks: true` to the live event only, never to the stored state, so the display shows "Tack!" briefly and a replay cannot repeat it. Klar also saves the open sale of the charge on screen to the sales log (at most once); Avbryt drops it. |
+| GET | `/api/sales?date=YYYY-MM-DD` | operator | Returns `{ date, sales }`, that Stockholm day's sales log in order-number order. No date means today. |
+| DELETE | `/api/sales?date=YYYY-MM-DD&orderNo=n` | operator | Removes one sale from the log (a Klar pressed by mistake). `404 sale_not_found` if it is not there. |
 
 `EventSource` cannot set request headers, which would force the token into the
 query string where proxy and server logs capture it. The single-use 30-second
