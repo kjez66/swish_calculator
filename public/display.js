@@ -156,16 +156,30 @@
   // See app.js: ping every 15 s; no message between two pings means the
   // connection is dead, so close it and reconnect.
   var PING_MS = 15000;
+  // Deadlines for getting back on (see app.js): a request or a new socket can
+  // hang for minutes on Wi-Fi without internet.
+  var TICKET_TIMEOUT_MS = 8000;
+  var CONNECT_TIMEOUT_MS = 10000;
 
   function connect() {
     if (!creds) {
       setOnline(true);
       return;
     }
+    // A timer rather than AbortController, which old phones lack. After the
+    // timeout a late answer is ignored: the retry is already under way.
+    var timedOut = false;
+    var ticketTimer = setTimeout(function () {
+      timedOut = true;
+      setOnline(false);
+      setTimeout(connect, 3000);
+    }, TICKET_TIMEOUT_MS);
     fetch("/api/stream-ticket?roomId=" + encodeURIComponent(creds.roomId), {
       method: "POST",
       headers: { Authorization: "Bearer " + creds.displayToken },
     }).then(function (res) {
+      clearTimeout(ticketTimer);
+      if (timedOut) return null;
       if (res.status === 401 || res.status === 403) {
         // The server no longer accepts this pairing (the kassa is gone):
         // retrying cannot help, so go back to the pair screen.
@@ -192,6 +206,7 @@
         if (ended) return;
         ended = true;
         clearInterval(timer);
+        clearTimeout(deadline);
         ws.onclose = null;
         try {
           ws.close();
@@ -202,7 +217,10 @@
         // A ticket is single-use: reconnect through a fresh one.
         setTimeout(connect, 2000);
       };
+      // A socket that never opens is as dead as one that stopped answering.
+      var deadline = setTimeout(restart, CONNECT_TIMEOUT_MS);
       ws.onopen = function () {
+        clearTimeout(deadline);
         // The server replays the store name and current state on hello, so a
         // QR that was showing before a dropped connection reappears by itself.
         ws.send("hello");
@@ -228,6 +246,8 @@
       };
       ws.onclose = restart;
     }).catch(function () {
+      clearTimeout(ticketTimer);
+      if (timedOut) return;
       setOnline(false);
       setTimeout(connect, 3000);
     });

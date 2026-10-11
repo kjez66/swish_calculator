@@ -590,12 +590,22 @@ $("closePair").onclick = () => $("pairDlg").close();
 // between two pings means the connection is dead even if the socket never
 // said so (a phone that lost its network), so close it and reconnect.
 const PING_MS = 15_000;
+// Deadlines for getting back on: on Wi-Fi without internet, or a connection
+// that died with the network, a request or a new socket can hang for minutes.
+const TICKET_TIMEOUT_MS = 8_000;
+const CONNECT_TIMEOUT_MS = 10_000;
 
 async function connect() {
   let ws;
   try {
     // A browser WebSocket cannot send headers: the token buys a one-time ticket.
-    const { ticket } = await api("POST", "/api/stream-ticket");
+    // A late answer after the timeout is simply ignored.
+    const { ticket } = await Promise.race([
+      api("POST", "/api/stream-ticket"),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), TICKET_TIMEOUT_MS)
+      ),
+    ]);
     const scheme = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(
       `${scheme}://${location.host}/api/events?roomId=${room.roomId}` +
@@ -616,6 +626,7 @@ async function connect() {
     if (ended) return;
     ended = true;
     clearInterval(timer);
+    clearTimeout(deadline);
     ws.onclose = null;
     try {
       ws.close();
@@ -626,7 +637,10 @@ async function connect() {
     // A ticket is single-use, so a reconnect goes through a fresh one.
     setTimeout(connect, 3000);
   };
+  // A socket that never opens is as dead as one that stopped answering.
+  const deadline = setTimeout(restart, CONNECT_TIMEOUT_MS);
   ws.onopen = () => {
+    clearTimeout(deadline);
     // "hello" replays the kassa's current state. The basket and the QR dialog
     // live only in page memory, so after a reload (or a mobile browser
     // discarding the backgrounded tab) this is what brings back an open charge
