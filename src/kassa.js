@@ -24,6 +24,8 @@ const DAY_MS = 24 * 60 * 60_000;
 /** storage.delete() takes at most 128 keys per call. */
 const DELETE_BATCH = 128;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A display that has not pinged (or connected) this recently is gone. */
+const PRESENCE_TIMEOUT_MS = 45_000;
 
 /** Zero-padded, so storage's key order is order-number order. */
 const saleKey = (date, orderNo) => `sale:${date}:${String(orderNo).padStart(6, "0")}`;
@@ -40,6 +42,13 @@ export class Kassa extends DurableObject {
   /** Test seam: the clock. */
   now = () => new Date();
   #queue = Promise.resolve();
+
+  constructor(ctx, env) {
+    super(ctx, env);
+    // Answered by the runtime itself without waking the object, so displays
+    // left connected all day cost no duration.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
 
   /** RPC from the Worker: set up a new kassa. */
   async create(roomId) {
@@ -100,17 +109,100 @@ export class Kassa extends DurableObject {
   }
 
   /**
-   * Store the new state. Task 6 adds the push to open sockets and the `live`
-   * parameter (the idle route already passes it).
+   * Store the new state and push it, rendered, to every open socket.
    * @param {object} state
+   * @param {object} [live] fields for open sockets only, never stored, so a
+   *   later replay cannot repeat them (the display's "Tack!")
    */
-  async #publish(state) {
+  async #publish(state, live = {}) {
     await this.ctx.storage.put("current", state);
+    this.#send(this.ctx.getWebSockets(), "state", { ...render(state), ...live });
+  }
+
+  /** @param {Request} request @param {URL} url */
+  async #openSocket(request, url) {
+    if (request.headers.get("Upgrade") !== "websocket") {
+      return fail("expected_websocket", 426);
+    }
+    const key = `ticket:${url.searchParams.get("ticket") ?? ""}`;
+    const ticket = await this.ctx.storage.get(key);
+    if (!ticket) return fail("unauthorized", 401);
+    await this.ctx.storage.delete(key);
+    const now = this.now().getTime();
+    if (ticket.expiresAt <= now) return fail("unauthorized", 401);
+
+    const [client, server] = Object.values(new WebSocketPair());
+    // Hibernatable: the object can sleep while sockets stay open.
+    this.ctx.acceptWebSocket(server, [ticket.role]);
+    server.serializeAttachment({ role: ticket.role, connectedAt: now });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /**
+   * "hello" replays everything a fresh page needs: this is what makes a
+   * dropped connection invisible, since every reconnect says hello again.
+   * @param {WebSocket} ws @param {string|ArrayBuffer} message
+   */
+  async webSocketMessage(ws, message) {
+    const { role } = ws.deserializeAttachment();
+    if (message === "hello") {
+      if (role === "display") {
+        const settings = await this.ctx.storage.get("settings");
+        this.#send([ws], "room", { storeName: settings?.storeName ?? null });
+      }
+      const current = (await this.ctx.storage.get("current")) ?? { state: "idle" };
+      this.#send([ws], "state", render(current));
+      this.#sendPresence(role === "operator" ? [ws] : this.ctx.getWebSockets("operator"));
+    } else if (message === "presence" && role === "operator") {
+      this.#sendPresence([ws]);
+    }
+    // Anything else is ignored.
+  }
+
+  /** @param {WebSocket} ws @param {number} code @param {string} reason */
+  webSocketClose(ws, code, reason) {
+    try {
+      ws.close(code, reason);
+    } catch {
+      // 1005/1006 cannot be echoed; the socket is gone either way.
+    }
+    if (ws.deserializeAttachment().role === "display") {
+      this.#sendPresence(this.ctx.getWebSockets("operator"));
+    }
+  }
+
+  /** @param {WebSocket[]} sockets @param {string} event @param {object} data */
+  #send(sockets, event, data) {
+    const message = JSON.stringify({ event, data });
+    for (const ws of sockets) {
+      // One dead socket must not stop the others.
+      try {
+        ws.send(message);
+      } catch {
+        // Its close handler cleans up.
+      }
+    }
+  }
+
+  /**
+   * Open displays whose last ping (or connect) is recent: a vanished phone
+   * drops out. getWebSockets() can still list a socket that is closing (the
+   * one webSocketClose just closed), so only OPEN ones count.
+   */
+  #sendPresence(operators) {
+    const cutoff = this.now().getTime() - PRESENCE_TIMEOUT_MS;
+    const displays = this.ctx.getWebSockets("display").filter((ws) => {
+      if (ws.readyState !== WebSocket.OPEN) return false;
+      const pinged = this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? 0;
+      return Math.max(pinged, ws.deserializeAttachment().connectedAt) > cutoff;
+    }).length;
+    this.#send(operators, "presence", { displays });
   }
 
   /** @param {Request} request */
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/events") return await this.#openSocket(request, url);
     return await this.#serial(() => this.#api(request, url));
   }
 
@@ -172,6 +264,8 @@ export class Kassa extends DurableObject {
       }
       // Store the normalized form so nothing downstream has to re-parse it.
       await storage.put("settings", { storeName, payeeNumber });
+      // Open displays show the store name; let them update without a reconnect.
+      this.#send(this.ctx.getWebSockets("display"), "room", { storeName });
       return json({ storeName, payeeNumber });
     }
 
@@ -353,6 +447,19 @@ export class Kassa extends DurableObject {
       if (!await storage.get(key)) return fail("sale_not_found", 404);
       await storage.delete(key);
       return json({ ok: true });
+    }
+
+    if (path === "/api/stream-ticket" && method === "POST") {
+      const auth = await this.#authorize(request, "any");
+      if (!auth) return fail("unauthorized", 401);
+      // A browser WebSocket cannot send an Authorization header, and a token
+      // in the URL would land in logs: trade it for a single-use ticket.
+      const ticket = randomToken();
+      await storage.put(`ticket:${ticket}`, {
+        role: auth.role,
+        expiresAt: this.now().getTime() + TICKET_TTL_MS,
+      });
+      return json({ ticket });
     }
 
     return fail("not_found", 404);

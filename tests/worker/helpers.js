@@ -56,6 +56,49 @@ export async function configuredRoom() {
   return { ...room, products, charge, idle, sales };
 }
 
+/**
+ * Open a live socket as the page does: ticket, upgrade, then "hello".
+ * `next(event)` resolves with the data of the next message of that event,
+ * skipping (and keeping) others; it fails after two seconds.
+ */
+export async function openSocket(roomId, token) {
+  const { ticket } = await (await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
+    token,
+  })).json();
+  const res = await call("GET", `/api/events?roomId=${roomId}&ticket=${ticket}`, {
+    headers: { Upgrade: "websocket" },
+  });
+  if (res.status !== 101) throw new Error(`upgrade failed: ${res.status}`);
+  const ws = res.webSocket;
+  ws.accept();
+  const inbox = [];
+  let wake = () => {};
+  ws.addEventListener("message", (e) => {
+    inbox.push(e.data);
+    wake();
+  });
+  const take = async (match) => {
+    while (true) {
+      const i = inbox.findIndex(match);
+      if (i >= 0) return inbox.splice(i, 1)[0];
+      await new Promise((resolve, reject) => {
+        wake = resolve;
+        setTimeout(() => reject(new Error("no matching message")), 2000);
+      });
+    }
+  };
+  ws.send("hello");
+  return {
+    ws,
+    ticket,
+    next: async (event) =>
+      JSON.parse(await take((m) => m !== "pong" && JSON.parse(m).event === event)).data,
+    nextRaw: (text) => take((m) => m === text),
+    /** Messages received and not yet taken. */
+    pending: () => inbox.length,
+  };
+}
+
 /** Pair a display to the kassa the way the display page does. */
 export async function pairDisplay(api) {
   const { code } = await (await api("POST", "/api/pair")).json();
