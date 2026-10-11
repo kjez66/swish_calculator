@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "swish-kassa",
+  "main": "src/worker.js",
+  // If Wrangler says this date is newer than its runtime, use the date it names.
+  "compatibility_date": "2026-10-01",
+  // public/ is served as-is; the Worker only runs for paths with no file.
+  "assets": { "directory": "./public" },
+  "durable_objects": {
+    "bindings": [
+      { "name": "KASSA", "class_name": "Kassa" },
+      { "name": "DIRECTORY", "class_name": "Directory" }
+    ]
+  },
+  // SQLite-backed classes: the only kind the Free plan offers.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Kassa", "Directory"] }],
+  "observability": { "enabled": true }
+}

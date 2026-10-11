@@ -1,5 +1,6 @@
 {
   "unstable": ["kv"],
+  "nodeModulesDir": "none",
   "tasks": {
     "dev": "deno run -A --watch main.js",
     "start": "deno run -A main.js",
@@ -11,5 +12,11 @@
     "@std/assert": "jsr:@std/assert@1",
     "@std/http/file-server": "jsr:@std/http@1/file-server"
   },
-  "fmt": { "indentWidth": 2, "lineWidth": 90, "exclude": ["docs/", "public/brand/"] }
+  "test": { "exclude": ["tests/worker/", "node_modules/"] },
+  "lint": { "exclude": ["tests/worker/", "node_modules/", ".wrangler/"] },
+  "fmt": {
+    "indentWidth": 2,
+    "lineWidth": 90,
+    "exclude": ["docs/", "public/brand/", "node_modules/", ".wrangler/"]
+  }
 }
