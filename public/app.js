@@ -585,37 +585,76 @@ $("closePair").onclick = () => $("pairDlg").close();
 
 // --- live connection -------------------------------------------------------
 
+// A ping every 15 s: the server answers "pong" without waking, and the
+// "presence" question keeps the display status current. No message at all
+// between two pings means the connection is dead even if the socket never
+// said so (a phone that lost its network), so close it and reconnect.
+const PING_MS = 15_000;
+
 async function connect() {
+  let ws;
   try {
+    // A browser WebSocket cannot send headers: the token buys a one-time ticket.
     const { ticket } = await api("POST", "/api/stream-ticket");
-    const es = new EventSource(`/api/events?ticket=${encodeURIComponent(ticket)}`);
-    // The first `state` event replays the room's current state. The basket and
-    // the QR dialog live only in page memory, so after a reload (or a mobile
-    // browser discarding the backgrounded tab) this is what brings back an open
-    // charge and its Klar/Avbryt. Without it the display keeps a payable QR
-    // that nothing on this page can clear.
-    es.addEventListener("state", (e) => {
-      const s = JSON.parse(e.data);
-      if (s.state === "charge") {
-        if (!$("qrDlg").open) showCharge(s);
-      } else if ($("qrDlg").open) {
-        $("qrDlg").close("server");
-      }
-    });
-    es.addEventListener("presence", (e) => {
-      setStatus(JSON.parse(e.data).displays > 0 ? "display" : "none");
-    });
-    es.onerror = () => {
-      setStatus("offline");
-      es.close();
-      // A ticket is single-use, so a reconnect needs a fresh one. EventSource's
-      // own retry cannot do that for us.
-      setTimeout(connect, 3000);
-    };
+    const scheme = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(
+      `${scheme}://${location.host}/api/events?roomId=${room.roomId}` +
+        `&ticket=${encodeURIComponent(ticket)}`,
+    );
   } catch {
     setStatus("offline");
     setTimeout(connect, 5000);
+    return;
   }
+  let alive = true;
+  let timer = 0;
+  let ended = false;
+  // Reconnect at once rather than wait for onclose: on a dead network the
+  // closing handshake cannot finish, and the browser may report the close
+  // much later. The old socket's own close is then ignored.
+  const restart = () => {
+    if (ended) return;
+    ended = true;
+    clearInterval(timer);
+    ws.onclose = null;
+    try {
+      ws.close();
+    } catch {
+      // Already closed.
+    }
+    setStatus("offline");
+    // A ticket is single-use, so a reconnect goes through a fresh one.
+    setTimeout(connect, 3000);
+  };
+  ws.onopen = () => {
+    // "hello" replays the kassa's current state. The basket and the QR dialog
+    // live only in page memory, so after a reload (or a mobile browser
+    // discarding the backgrounded tab) this is what brings back an open charge
+    // and its Klar/Avbryt. Without it the display keeps a payable QR that
+    // nothing on this page can clear.
+    ws.send("hello");
+    timer = setInterval(() => {
+      if (!alive) return restart();
+      alive = false;
+      ws.send("ping");
+      ws.send("presence");
+    }, PING_MS);
+  };
+  ws.onmessage = (e) => {
+    alive = true;
+    if (e.data === "pong") return;
+    const { event, data } = JSON.parse(e.data);
+    if (event === "state") {
+      if (data.state === "charge") {
+        if (!$("qrDlg").open) showCharge(data);
+      } else if ($("qrDlg").open) {
+        $("qrDlg").close("server");
+      }
+    } else if (event === "presence") {
+      setStatus(data.displays > 0 ? "display" : "none");
+    }
+  };
+  ws.onclose = restart;
 }
 
 // The header's status button says in words what the dot's colour means.

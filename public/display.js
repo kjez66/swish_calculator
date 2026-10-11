@@ -142,7 +142,8 @@
   // --- live connection -----------------------------------------------------
   function setStoreName(name) {
     var els = document.querySelectorAll(".store-name");
-    for (var i = 0; i < els.length; i++) {
+    var i;
+    for (i = 0; i < els.length; i++) {
       els[i].textContent = name || "";
       els[i].hidden = !name;
     }
@@ -151,6 +152,10 @@
   function setOnline(online) {
     el("status").hidden = online;
   }
+
+  // See app.js: ping every 15 s; no message between two pings means the
+  // connection is dead, so close it and reconnect.
+  var PING_MS = 15000;
 
   function connect() {
     if (!creds) {
@@ -162,7 +167,7 @@
       headers: { Authorization: "Bearer " + creds.displayToken },
     }).then(function (res) {
       if (res.status === 401 || res.status === 403) {
-        // The server no longer accepts this pairing (the room is gone):
+        // The server no longer accepts this pairing (the kassa is gone):
         // retrying cannot help, so go back to the pair screen.
         forgetPairing();
         setOnline(true);
@@ -173,23 +178,54 @@
       return res.json();
     }).then(function (data) {
       if (!data) return;
-      var es = new EventSource("/api/events?ticket=" + encodeURIComponent(data.ticket));
-      // Whose stall this is: shown on the welcome, charge and thank-you screens.
-      es.addEventListener("room", function (e) {
-        setStoreName(JSON.parse(e.data).storeName);
-      });
-      es.addEventListener("state", function (e) {
-        setOnline(true);
-        renderState(JSON.parse(e.data));
-      });
-      es.onerror = function () {
+      var scheme = location.protocol === "https:" ? "wss" : "ws";
+      var ws = new WebSocket(
+        scheme + "://" + location.host + "/api/events?roomId=" +
+          encodeURIComponent(creds.roomId) + "&ticket=" + encodeURIComponent(data.ticket),
+      );
+      var alive = true;
+      var timer = 0;
+      var ended = false;
+      // Reconnect at once (see app.js): a dead network may delay onclose.
+      var restart = function () {
+        if (ended) return;
+        ended = true;
+        clearInterval(timer);
+        ws.onclose = null;
+        try {
+          ws.close();
+        } catch (_e) {
+          // Already closed.
+        }
         setOnline(false);
-        es.close();
-        // A ticket is single-use, so EventSource's built-in retry would reuse a
-        // spent one. Reconnect through a fresh ticket instead. The server replays
-        // current state on connect, so the QR reappears by itself.
+        // A ticket is single-use: reconnect through a fresh one.
         setTimeout(connect, 2000);
       };
+      ws.onopen = function () {
+        // The server replays the store name and current state on hello, so a
+        // QR that was showing before a dropped connection reappears by itself.
+        ws.send("hello");
+        timer = setInterval(function () {
+          if (!alive) {
+            restart();
+            return;
+          }
+          alive = false;
+          ws.send("ping");
+        }, PING_MS);
+      };
+      ws.onmessage = function (e) {
+        alive = true;
+        if (e.data === "pong") return;
+        var msg = JSON.parse(e.data);
+        // Whose stall this is: shown on the welcome, charge and thank-you screens.
+        if (msg.event === "room") setStoreName(msg.data.storeName);
+        else if (msg.event === "state") {
+          setOnline(true);
+          renderState(msg.data);
+        }
+      };
+      ws.onclose = restart;
     }).catch(function () {
       setOnline(false);
       setTimeout(connect, 3000);
