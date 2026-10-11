@@ -16,7 +16,8 @@ Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md`
   Sun, Läsk, Kaffe, Hembakat, Delicatoboll, Korv med bröd, Wasa Knäcke, Corny, Chips,
   Kexchoklad), so it can sell right away. Change the list in `DEFAULT_PRODUCTS` in
   `src/defaults.js`. It only applies to kassor created afterwards.
-- **Basket and running total**, with + and − per line.
+- **Basket and running total**, with + and − per line, and a trash button that empties
+  the whole basket (after asking) when a customer changes their mind.
 - **Swish QR** on the paired customer display, and on the operator phone as a fallback
   when no display is paired.
 - **Sales log** (the chart button in the header): per day, the number of sales, the

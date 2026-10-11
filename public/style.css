@@ -103,8 +103,8 @@ body {
    the gear to the right: the name gets the full width instead of an ellipsis. */
 header {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  grid-template-areas: "name sales gear" "status sales gear";
+  grid-template-columns: 1fr auto auto auto;
+  grid-template-areas: "name clear sales gear" "status clear sales gear";
   align-items: center;
   column-gap: 12px;
   padding: 16px 16px 8px;
@@ -192,6 +192,15 @@ button:active:not(:disabled) {
 }
 .sales-btn {
   grid-area: sales;
+}
+.clear-btn {
+  grid-area: clear;
+}
+/* Nothing to empty: quiet and flat, like the disabled Ta betalt. */
+.icon-btn:disabled {
+  color: var(--muted);
+  box-shadow: none;
+  cursor: default;
 }
 
 /* --- sales log -------------------------------------------------------------- */

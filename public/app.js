@@ -134,6 +134,7 @@ function renderBasket() {
   // Not before the first /api/state answer: until then nobody knows yet.
   $("setupHint").hidden = configured || !stateLoaded;
   $("buyBtn").disabled = inFlight || items.length === 0 || !configured;
+  $("clearBtn").disabled = inFlight || items.length === 0;
   // The operator's verb is "take payment", and the amount on the button saves a
   // glance up at the total. On slow market data, say that something is happening.
   $("buyBtn").classList.toggle("loading", inFlight); // spinner via CSS
@@ -261,6 +262,22 @@ $("doneCharge").onclick = () => {
 $("cancelCharge").onclick = () => {
   markClosed();
   $("qrDlg").close();
+};
+
+// --- emptying the basket ---------------------------------------------------
+
+// The customer changed their mind: everything goes, but only after asking.
+$("clearBtn").onclick = () => $("clearDlg").showModal();
+$("keepBasket").onclick = () => $("clearDlg").close();
+$("confirmClear").onclick = () => {
+  $("clearDlg").close();
+  basket.clear();
+  $("error").textContent = "";
+  renderAll();
+  // The dialog hands focus back to the trash button, now disabled, so a
+  // keyboard user would land on <body>. Start at the products instead.
+  document.querySelector(".product")?.focus();
+  announce("Korgen är tömd.");
 };
 
 // --- settings --------------------------------------------------------------
