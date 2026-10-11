@@ -602,10 +602,11 @@ $("closePair").onclick = () => $("pairDlg").close();
 
 // --- live connection -------------------------------------------------------
 
-// A ping every 15 s: the server answers "pong" without waking, and the
-// "presence" question keeps the display status current. No message at all
-// between two pings means the connection is dead even if the socket never
-// said so (a phone that lost its network), so close it and reconnect.
+// A "presence" question every 15 s keeps the display status current, and its
+// answer doubles as the heartbeat (the display, which has no such question,
+// sends "ping" instead). No message at all between two questions means the
+// connection is dead even if the socket never said so (a phone that lost its
+// network), so close it and reconnect.
 const PING_MS = 15_000;
 // Deadlines for getting back on: on Wi-Fi without internet, or a connection
 // that died with the network, a request or a new socket can hang for minutes.
@@ -667,7 +668,6 @@ async function connect() {
     timer = setInterval(() => {
       if (!alive) return restart();
       alive = false;
-      ws.send("ping");
       ws.send("presence");
     }, PING_MS);
   };

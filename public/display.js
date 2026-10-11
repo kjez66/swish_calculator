@@ -153,8 +153,10 @@
     el("status").hidden = online;
   }
 
-  // See app.js: ping every 15 s; no message between two pings means the
-  // connection is dead, so close it and reconnect.
+  // A ping every 15 s: the server answers "pong" without waking, and the ping
+  // is what tells the operator this display is still there. No message at all
+  // between two pings means the connection is dead even if the socket never
+  // said so, so close it and reconnect.
   var PING_MS = 15000;
   // Deadlines for getting back on (see app.js): a request or a new socket can
   // hang for minutes on Wi-Fi without internet.
