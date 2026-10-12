@@ -70,8 +70,23 @@
     <p class="sr-only" role="status" id="announce"></p>
 
     <section class="basket" aria-label="Korg">
-      <div class="lines" id="lines"></div>
-      <div class="total"><span>Totalt</span><span id="total">0,00 kr</span></div>
+      <!-- Folded away by default, so a long basket never covers the products;
+           the count in front of the total opens it. -->
+      <div class="lines" id="lines" hidden></div>
+      <div class="total">
+        <span id="totalLabel">Totalt</span>
+        <button class="lines-toggle" id="linesToggle" aria-expanded="false"
+          aria-controls="lines" hidden>
+          <span id="itemCount"></span>
+          <!-- Lucide "chevron-up" icon (ISC licence) -->
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </button>
+        <span id="total">0,00 kr</span>
+      </div>
       <div class="err" id="error" role="alert"></div>
       <!-- Why "Ta betalt" is disabled before setup, with the way out. -->
       <p class="setup-hint" id="setupHint" hidden>

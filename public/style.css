@@ -416,11 +416,44 @@ main {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
-.total span:first-child {
+#totalLabel,
+.lines-toggle {
   font-size: 17px;
   font-weight: 600;
   letter-spacing: 0;
   color: var(--muted);
+}
+/* "3 varor ⌃": opens and closes the basket lines above it. */
+.lines-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  /* 44px to tap, without making the total row taller than with "Totalt". */
+  margin: -5px 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+.lines-toggle[hidden] {
+  display: none;
+}
+.lines-toggle:active {
+  background: var(--hairline);
+}
+.lines-toggle svg {
+  transition: transform 0.15s var(--ease);
+}
+.lines-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lines-toggle svg {
+    transition: none;
+  }
 }
 .buy {
   display: flex;

@@ -11,6 +11,9 @@ let stateLoaded = false;
 /** @type {Map<string, number>} product id -> quantity */
 const basket = new Map();
 let inFlight = false;
+// Whether the basket lines are shown. Closed by default, and closed again
+// whenever the basket empties, so every sale starts with the products in view.
+let linesOpen = false;
 
 // --- API -------------------------------------------------------------------
 
@@ -130,6 +133,13 @@ function renderBasket() {
     total = 0;
   }
   $("total").textContent = `${formatOre(total)} kr`;
+  const count = items.reduce((n, item) => n + item.qty, 0);
+  if (!count) linesOpen = false;
+  $("totalLabel").hidden = count > 0;
+  $("linesToggle").hidden = count === 0;
+  $("itemCount").textContent = `${count} ${count === 1 ? "vara" : "varor"}`;
+  $("linesToggle").setAttribute("aria-expanded", String(linesOpen));
+  $("lines").hidden = !linesOpen;
   const configured = Boolean(settings?.storeName && settings?.payeeNumber);
   // Not before the first /api/state answer: until then nobody knows yet.
   $("setupHint").hidden = configured || !stateLoaded;
@@ -262,6 +272,13 @@ $("doneCharge").onclick = () => {
 $("cancelCharge").onclick = () => {
   markClosed();
   $("qrDlg").close();
+};
+
+// --- showing the basket lines ----------------------------------------------
+
+$("linesToggle").onclick = () => {
+  linesOpen = !linesOpen;
+  renderBasket();
 };
 
 // --- emptying the basket ---------------------------------------------------
