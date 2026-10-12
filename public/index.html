@@ -133,7 +133,9 @@
     <dialog id="salesDlg" aria-labelledby="salesTitle">
       <h2 id="salesTitle">Försäljning</h2>
       <label for="salesDate">Datum</label>
-      <input id="salesDate" type="date">
+      <!-- Not <input type="date">: it shows the date in the browser's language
+           (12/10/2026 on an English phone), and a page cannot change that. -->
+      <select id="salesDate"></select>
       <div id="salesBody"></div>
       <p class="sr-only" role="status" id="salesAnnounce"></p>
       <p class="note">

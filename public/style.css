@@ -436,7 +436,6 @@ main {
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text);
-  font-family: inherit;
 }
 .lines-toggle[hidden] {
   display: none;
@@ -579,7 +578,8 @@ label {
   font-size: 15px;
   color: var(--muted);
 }
-input {
+input,
+select {
   width: 100%;
   min-height: 48px;
   padding: 10px 12px;

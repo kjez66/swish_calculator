@@ -468,8 +468,18 @@ const STOCKHOLM = "Europe/Stockholm";
 const stockholmDay = (ms) =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: STOCKHOLM }).format(new Date(ms));
 const todayInStockholm = () => stockholmDay(Date.now());
-// The server keeps a sale 31 days, so the picker offers no earlier date.
-const oldestSalesDay = () => stockholmDay(Date.now() - 30 * 24 * 60 * 60_000);
+/**
+ * The days the date list offers, newest first, as YYYY-MM-DD: today and the 30
+ * before, since the server keeps a sale 31 days. Counted on the calendar in UTC,
+ * so a summer-time change cannot skip or repeat a day.
+ */
+function salesDays() {
+  const today = Date.parse(`${todayInStockholm()}T00:00:00Z`);
+  return Array.from(
+    { length: 31 },
+    (_, i) => new Date(today - i * 24 * 60 * 60_000).toISOString().slice(0, 10),
+  );
+}
 const clockTime = (ms) =>
   new Date(ms).toLocaleTimeString("sv-SE", {
     timeZone: STOCKHOLM,
@@ -579,9 +589,10 @@ async function loadSales({ afterRemoving } = {}) {
 }
 
 $("salesBtn").onclick = () => {
-  $("salesDate").value = todayInStockholm();
-  $("salesDate").max = todayInStockholm();
-  $("salesDate").min = oldestSalesDay();
+  // Rebuilt on every opening, so a kassa left open overnight gets the new day.
+  $("salesDate").innerHTML = salesDays().map((day, i) =>
+    `<option value="${day}">${day}${[" (idag)", " (igår)"][i] ?? ""}</option>`
+  ).join("");
   $("salesDlg").showModal();
   loadSales();
 };
