@@ -246,6 +246,9 @@ button:active:not(:disabled) {
   padding-left: 12px;
   white-space: nowrap;
 }
+.sales-pdf {
+  margin-top: 12px;
+}
 .sales-orders summary {
   min-height: 44px;
   display: flex;

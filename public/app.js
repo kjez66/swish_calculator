@@ -1,4 +1,5 @@
 import { basketTotalOre, formatOre, parseKronorToOre } from "/shared/money.js";
+import { salesReportPdf } from "/shared/report-pdf.js";
 import { summarizeSales } from "/shared/sales.js";
 
 const $ = (id) => document.getElementById(id);
@@ -498,6 +499,23 @@ const clockTime = (ms) =>
   });
 
 /**
+ * Hand the browser a file to save: a download on Android and computers, the
+ * preview (with Save and Share) on an iPhone.
+ */
+function saveFile(bytes, name, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  // Inside the open dialog: the rest of the page is inert behind it.
+  $("salesDlg").append(a);
+  a.click();
+  a.remove();
+  // Not revoked at once: Safari reads the file after click() returns.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
  * One sale in "Alla köp", with its Ta bort. Removing takes a second tap on a
  * confirm button in the same place: a Klar undone by mistake cannot be redone.
  */
@@ -598,8 +616,20 @@ async function loadSales({ afterRemoving, dayEmptied } = {}) {
     `<table class="sales-table"><thead><tr><th scope="col">Produkt</th>` +
     `<th scope="col">Antal</th><th scope="col">Summa (kr)</th></tr></thead>` +
     `<tbody>${rows}</tbody></table>` +
+    `<button class="icon-btn sales-pdf">Ladda ner PDF</button>` +
     `<details class="sales-orders"><summary>Alla köp (${summary.count})</summary>` +
     `<ol></ol></details>`;
+  $("salesBody").querySelector(".sales-pdf").onclick = () =>
+    saveFile(
+      salesReportPdf({
+        storeName: settings?.storeName ?? "",
+        date,
+        summary,
+        createdAt: Date.now(),
+      }),
+      `forsaljning-${date}.pdf`,
+      "application/pdf",
+    );
   // Latest first: after a match, the last sales are the ones to check.
   const list = $("salesBody").querySelector("ol");
   for (const sale of [...sales].reverse()) list.append(saleItem(sale, date));

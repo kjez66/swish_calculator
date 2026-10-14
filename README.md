@@ -31,6 +31,9 @@ updates, which replace that document's Deno sections).
   A sale is saved when the operator presses **Klar**. **Avbryt** saves nothing. A sale
   saved by mistake can be removed. **Sales are kept for 31 days**, then deleted
   automatically. The date list offers only the days with sales, newest first.
+  **Ladda ner PDF** saves the day's totals and per-product table as a one-page A4
+  report to hand in. Product names print in Helvetica, so a character it lacks (an
+  emoji, say) prints as "?".
 - **Installable as apps:** the till ("Kassa") and the customer display ("Display",
   fullscreen) each install on a phone's home screen with their own icon. See
   [Installing on the phones](#installing-on-the-phones).
