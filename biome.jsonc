@@ -1,0 +1,67 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  // Skip what .gitignore skips: node_modules/ and .wrangler/.
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      // Earlier specs and plans are kept as written.
+      "!docs",
+      // Swish's official logo, shipped unchanged.
+      "!public/brand",
+      "!.claude",
+      // Icon sources for the PNGs, never shown inline.
+      "!**/*.svg",
+      "!package-lock.json"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 90,
+    // .gitattributes checks every file out with LF, on Windows too.
+    "lineEnding": "lf"
+  },
+  "javascript": { "formatter": { "quoteStyle": "double", "trailingCommas": "all" } },
+  // Sorting imports is neither linting nor formatting; not wanted here.
+  "assist": { "actions": { "source": { "organizeImports": "off" } } },
+  "linter": {
+    "rules": {
+      "preset": "recommended",
+      "complexity": {
+        // !important only switches off motion for prefers-reduced-motion and
+        // makes [hidden] win, which is what it is for.
+        "noImportantStyles": "off"
+      },
+      "style": {
+        // style.css is ordered by component, not by selector specificity.
+        "noDescendingSpecificity": "off",
+        // The HTML-building code reads better joined with + than as nested templates.
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        // A plain value before clamp()/min() is the fallback for older phone browsers.
+        "noDuplicateProperties": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // The display runs on old phones and must stay ES5 (tests/display_es5.test.js):
+      // no trailing commas after the last argument, no arrow functions.
+      "includes": ["public/display.js"],
+      "javascript": { "formatter": { "trailingCommas": "none" } },
+      "linter": { "rules": { "complexity": { "useArrowFunction": "off" } } }
+    },
+    {
+      // index.html has no <form>, so a button without a type never submits anything.
+      "includes": ["public/index.html"],
+      "linter": { "rules": { "a11y": { "useButtonType": "off" } } }
+    },
+    {
+      // The amount heading is empty until display.js fills it in with each charge.
+      "includes": ["public/display.html"],
+      "linter": { "rules": { "a11y": { "useHeadingContent": "off" } } }
+    }
+  ]
+}

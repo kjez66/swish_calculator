@@ -1,0 +1,2 @@
+# LF in every checkout, Windows included, so `npm run check` passes everywhere.
+* text=auto eol=lf

@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-var
 // Deliberately ES5 (var, no arrow functions): this page runs on an old phone.
 (function () {
   var LS = "swish-kassa-display";
@@ -195,8 +194,8 @@
     }).then(function (data) {
       if (!data) return;
       var scheme = location.protocol === "https:" ? "wss" : "ws";
-      // Built first so the call stays on one line: deno fmt would give a
-      // multi-line call a trailing comma, which ES5 browsers cannot parse.
+      // Built first so the call stays on one line: a trailing comma after a
+      // multi-line call's last argument is ES2017, which ES5 browsers cannot parse.
       var url = scheme + "://" + location.host + "/api/events?roomId=" +
         encodeURIComponent(creds.roomId) + "&ticket=" + encodeURIComponent(data.ticket);
       var ws = new WebSocket(url);

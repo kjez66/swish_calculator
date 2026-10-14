@@ -17,7 +17,7 @@ a clone needs only Node.js and npm.
 - `npm test` runs every test (the 48 Worker tests and the 39 ported ones, 87 in
   all) inside workerd, and they pass.
 - `npm run check` lints and checks formatting, and passes on a clean checkout,
-  including a Windows checkout with CRLF line endings.
+  Windows included.
 - `deno.json` and `deno.lock` are gone. Deno is not mentioned anywhere outside
   `docs/` and needs no installing.
 - The ported tests check the same things as before, under the same names.
@@ -69,8 +69,11 @@ to an exact version, that does both.
 - **`biome.json`:** 2-space indent and 90-character lines, as `deno.json` has
   now; double quotes, which `deno fmt` also uses; the recommended lint rules.
   Excluded: `docs/`, `public/brand/`, `node_modules/` and `.wrangler/`.
-- **Line endings:** set so a Windows checkout with CRLF line endings passes. That
-  is what made `deno fmt --check` flag every file.
+- **Line endings:** LF everywhere. A Windows checkout mixes CRLF (files from git,
+  with `core.autocrlf`) and LF (files written by tools), so no single Biome setting
+  passes; that mix is what made `deno fmt --check` flag every file. A
+  `.gitattributes` with `* text=auto eol=lf` checks every file out as LF, and
+  Biome expects LF.
 - **Scripts:** `npm run check` lints and checks formatting without changing
   files; `npm run format` rewrites formatting.
 - **Code comments:** the two Deno lint markers become their Biome equivalents:

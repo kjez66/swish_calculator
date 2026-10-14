@@ -66,7 +66,7 @@ export function sanitizeMessage(text) {
     // C0 controls other than \t \n \v \f \r, plus DEL and the C1 controls
     // (U+0080-U+009F). These carry no meaning in a note and are deleted rather
     // than turned into whitespace.
-    // deno-lint-ignore no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: deleting control characters is what this regex is for
     .replace(/[\x00-\x08\x0E-\x1F\x7F-\x9F]/g, "")
     // Bidi marks (LRM, RLM), embeddings/overrides and isolates: invisible, and
     // able to visually reorder the note, e.g. to move or hide the order number.
