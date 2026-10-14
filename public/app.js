@@ -313,9 +313,6 @@ $("confirmClear").onclick = () => {
 
 // --- settings --------------------------------------------------------------
 
-// A new row has no price (null), so it stays blank and an untouched blank row
-// is skipped on save. A saved price of 0 renders as "0,00": left empty, saving
-// that named row would fail as an invalid price.
 /** The Kategori list's options, with the product's category selected. */
 const categoryOptions = (selected) =>
   `<option value="">Ingen</option>` +
@@ -324,6 +321,9 @@ const categoryOptions = (selected) =>
       `<option value="${id}"${id === selected ? " selected" : ""}>${name}</option>`,
   ).join("");
 
+// A new row has no price (null), so it stays blank and an untouched blank row
+// is skipped on save. A saved price of 0 renders as "0,00": left empty, saving
+// that named row would fail as an invalid price.
 // Three lines per product, so the name gets the full width on a phone and the
 // price, reorder and delete buttons can all be 44px targets.
 // The third picks the category that tints the product's tile.

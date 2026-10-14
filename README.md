@@ -20,7 +20,7 @@ updates, which replace that document's Deno sections).
   for when something runs out.
 - **Categories.** Each product can be Dryck, Mat, Fika, Godis or Övrigt, chosen in the
   product settings. The till tints a product's tile in its category's colour; a
-  product with no category keeps a plain tile. The default menu comes sorted.
+  product with no category keeps a plain tile. The default menu comes with categories.
 - **Default menu.** A new kassa starts with the HK Halmstad P13 kiosk menu (Loka, Capri
   Sun, Läsk, Kaffe, Hembakat, Delicatoboll, Korv med bröd, Wasa Knäcke, Corny, Chips,
   Kexchoklad), so it can sell right away. Change the list in `DEFAULT_PRODUCTS` in

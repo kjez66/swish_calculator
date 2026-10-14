@@ -761,7 +761,8 @@ input[aria-invalid] {
 }
 .product-row.off .toggle,
 .product-row.off input.name,
-.product-row.off input.price {
+.product-row.off input.price,
+.product-row.off select.category {
   color: var(--muted);
 }
 @media (prefers-reduced-motion: reduce) {
