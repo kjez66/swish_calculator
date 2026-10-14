@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { isCategory } from "../public/shared/categories.js";
 import { basketTotalOre } from "../public/shared/money.js";
 import {
   buildPayload,
@@ -310,6 +311,10 @@ export class Kassa extends DurableObject {
         if (!Number.isInteger(p.sortOrder)) return fail("invalid_products", 400);
         // Optional: products saved before the flag existed have none, and are on.
         if (p.enabled !== undefined && typeof p.enabled !== "boolean") {
+          return fail("invalid_products", 400);
+        }
+        // Optional too: no category is told by leaving the key out, never null.
+        if (p.category !== undefined && !isCategory(p.category)) {
           return fail("invalid_products", 400);
         }
       }

@@ -96,3 +96,17 @@ test("a long store name is cut so the note still ends with the order number", as
   expect(message.endsWith(" #1")).toBe(true);
   expect(payload.split(";")).toHaveLength(4);
 });
+
+test("a product with a category charges, and its sale line has no category", async () => {
+  const { api, products, charge, idle, sales } = await configuredRoom();
+  await api("PUT", "/api/products", {
+    body: products.map((p) => ({ ...p, category: "dryck" })),
+  });
+  const res = await charge([{ id: "kaffe", qty: 1 }], 2000);
+  expect(res.orderNo).toBeGreaterThan(0);
+  await idle(true);
+  const [sale] = (await sales()).sales;
+  expect(sale.lines).toEqual([
+    { productId: "kaffe", name: "Kaffe", priceOre: 2000, qty: 1 },
+  ]);
+});

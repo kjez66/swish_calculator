@@ -82,3 +82,26 @@ test("PUT /api/products validates its input", async () => {
     expect((await api("PUT", "/api/products", { body })).status).toBe(400);
   }
 });
+
+test("a product's category is saved and returned; none means no key", async () => {
+  const { api } = await newRoom();
+  const products = [
+    { id: "a", name: "Kaffe", priceOre: 2000, sortOrder: 0, category: "dryck" },
+    { id: "b", name: "Bulle", priceOre: 1500, sortOrder: 1, category: "ovrigt" },
+    { id: "c", name: "Present", priceOre: 500, sortOrder: 2 },
+  ];
+  expect((await api("PUT", "/api/products", { body: products })).status).toBe(200);
+  const state = await (await api("GET", "/api/state")).json();
+  expect(state.products).toEqual(products);
+  expect("category" in state.products[2]).toBe(false);
+});
+
+test("PUT /api/products refuses a category that is not one of the five", async () => {
+  const { api } = await newRoom();
+  for (const category of ["Dryck", "drinks", "", null, 3, ["mat"]]) {
+    const body = [{ id: "a", name: "Kaffe", priceOre: 100, sortOrder: 0, category }];
+    const res = await api("PUT", "/api/products", { body });
+    expect(res.status, JSON.stringify(category)).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid_products" });
+  }
+});
