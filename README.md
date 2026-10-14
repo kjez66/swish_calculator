@@ -65,14 +65,13 @@ deploy reaches the phones at once; offline it only keeps the pages, never the da
 
 ## Run locally
 
-Requires Node.js 22 or later (for Wrangler, Cloudflare's tool) and, for the
-pure-module tests, Deno 2.
+Requires Node.js 22 or later.
 
 ```bash
 npm install
 npm run dev       # http://localhost:8787, the real Workers runtime
-npm test          # server tests, inside the Workers runtime
-deno task test    # money, Swish payload, QR and other shared code
+npm test          # every test, inside the Workers runtime
+npm run check     # lint and formatting (Biome); npm run format fixes formatting
 ```
 
 `package.json` already allows `workerd`'s install script (npm 11 blocks install
@@ -196,6 +195,7 @@ switching later is a settings change.
 | `public/display.html`, `display.js` | The customer display (ES5, for old phones) |
 | `public/shared/` | Money, Swish payload and sales summary code, shared by browser and server |
 | `public/*.webmanifest`, `sw.js`, `icons/` | Installing as apps (`icons/*.svg` are the sources of the PNGs) |
-| `tests/worker/` | Server tests in the Workers runtime: `npm test` |
-| `tests/*_test.js` | Shared code, pages, PWA files and display.js staying ES5: `deno task test` |
+| `tests/worker/` | Server tests: `npm test` |
+| `tests/*.test.js` | Shared code, pages, PWA files and display.js staying ES5: `npm test` |
+| `biome.jsonc` | Lint and format settings: `npm run check` |
 | `docs/superpowers/` | Design documents and implementation plans |
