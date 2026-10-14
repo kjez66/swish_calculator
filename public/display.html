@@ -89,10 +89,20 @@
       border-radius: 1px;
       background: #0f6b43;
     }
+    /* The welcome screen is two groups, who and how to pay, on one spacing
+       scale: 12 px within a pair, 32 px between lines, 40 px between groups.
+       The name is the stall's, but the Swish logo is what the customer needs,
+       so the name no longer outweighs it. */
     #idle .brand {
-      font-size: 34px;
-      font-size: clamp(28px, 9vw, 56px);
+      margin: 0;
+      font-size: 29px;
+      font-size: clamp(26px, 7.5vw, 48px);
       line-height: 1.15;
+      /* "Halmstad / Handboll P13", not a lone "P13"; ignored where unsupported. */
+      text-wrap: balance;
+    }
+    #idle .brand::after {
+      margin-top: 12px;
     }
     #charge .brand {
       font-size: 18px;
@@ -121,11 +131,13 @@
       margin-top: 18px;
     }
     #idle .brand + .idle-title {
-      margin-top: 18px;
-    }
-    .pay-with {
       margin-top: 40px;
-      font-size: 14px;
+    }
+    /* No bottom margin: it would collapse with the logo's and widen the pair. */
+    .pay-with {
+      margin: 32px 0 0;
+      font-size: 16px;
+      font-size: clamp(16px, 4vw, 22px);
       color: #5b6270;
     }
     /* The official Swish file, unmodified (Swish's logo rules forbid editing it).
@@ -136,6 +148,11 @@
       height: clamp(28px, 5vh, 44px);
       width: auto;
       margin: 8px auto 0;
+    }
+    #idle .logo {
+      height: 54px;
+      height: clamp(48px, 8vh, 72px);
+      margin-top: 12px;
     }
     .wake-hint {
       display: inline-block;
