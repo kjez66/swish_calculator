@@ -31,14 +31,14 @@
      edge. Text and price stay at 4.5:1 or more on every tint. */
   --cat-dryck: #182f3f;
   --cat-dryck-edge: #2e526b;
-  --cat-mat: #3d2a1a;
-  --cat-mat-edge: #66472e;
+  --cat-mat: #4b2616;
+  --cat-mat-edge: #783f26;
   --cat-fika: #3b1c27;
   --cat-fika-edge: #663346;
   --cat-godis: #2c1f41;
   --cat-godis-edge: #4d3b6d;
-  --cat-ovrigt: #362f17;
-  --cat-ovrigt-edge: #5b5129;
+  --cat-ovrigt: #373315;
+  --cat-ovrigt-edge: #5d5726;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
