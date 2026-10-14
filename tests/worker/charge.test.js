@@ -3,7 +3,13 @@ import { call, configuredRoom, newRoom, pairDisplay } from "./helpers.js";
 
 test("a charge returns an order number, total, note, payload and SVG", async () => {
   const { charge } = await configuredRoom();
-  const body = await charge([{ id: "kaffe", qty: 2 }, { id: "loka", qty: 1 }], 5500);
+  const body = await charge(
+    [
+      { id: "kaffe", qty: 2 },
+      { id: "loka", qty: 1 },
+    ],
+    5500,
+  );
   expect(body.orderNo).toBe(1);
   expect(body.totalOre).toBe(5500);
   expect(body.message).toBe("Kiosken #1");

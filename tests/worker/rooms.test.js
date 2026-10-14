@@ -22,13 +22,16 @@ test("room creation is rate limited per client", async () => {
 test("kassa routes reject a missing or wrong token, and a bad roomId", async () => {
   const { roomId } = await newRoom();
   expect((await call("GET", `/api/state?roomId=${roomId}`)).status).toBe(401);
-  expect((await call("GET", `/api/state?roomId=${roomId}`, { token: "nope" })).status)
-    .toBe(401);
-  expect((await call("GET", "/api/state?roomId=not-a-uuid", { token: "x" })).status)
-    .toBe(401);
+  expect(
+    (await call("GET", `/api/state?roomId=${roomId}`, { token: "nope" })).status,
+  ).toBe(401);
+  expect((await call("GET", "/api/state?roomId=not-a-uuid", { token: "x" })).status).toBe(
+    401,
+  );
   const unknown = crypto.randomUUID();
-  expect((await call("GET", `/api/state?roomId=${unknown}`, { token: "x" })).status)
-    .toBe(401);
+  expect((await call("GET", `/api/state?roomId=${unknown}`, { token: "x" })).status).toBe(
+    401,
+  );
 });
 
 test("settings and products round-trip", async () => {

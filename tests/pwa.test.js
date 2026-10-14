@@ -29,8 +29,10 @@ function pngSize(bytes) {
 for (const { page, script, manifest } of APPS) {
   test(`public${page} is installable`, async () => {
     const html = await assetText(page);
-    expect(html.includes(`<link rel="manifest" href="${manifest}">`), "manifest link")
-      .toBe(true);
+    expect(
+      html.includes(`<link rel="manifest" href="${manifest}">`),
+      "manifest link",
+    ).toBe(true);
     expect(html.includes('<meta name="theme-color"'), "theme-color").toBe(true);
     const touch = /<link rel="apple-touch-icon" href="([^"]+)">/.exec(html);
     expect(touch, "apple-touch-icon").toBeTruthy();
@@ -49,13 +51,19 @@ for (const { page, script, manifest } of APPS) {
       expect(icon.type).toBe("image/png");
     }
     const any = m.icons.filter((i) => (i.purpose ?? "any") === "any").map((i) => i.sizes);
-    expect(any.includes("192x192") && any.includes("512x512"), "192 and 512 icons")
-      .toBe(true);
-    expect(m.icons.some((i) => i.purpose === "maskable"), "a maskable icon").toBe(true);
+    expect(any.includes("192x192") && any.includes("512x512"), "192 and 512 icons").toBe(
+      true,
+    );
+    expect(
+      m.icons.some((i) => i.purpose === "maskable"),
+      "a maskable icon",
+    ).toBe(true);
 
     const js = await assetText(script);
-    expect(js.includes('serviceWorker.register("/sw.js")'), "registers the service worker")
-      .toBe(true);
+    expect(
+      js.includes('serviceWorker.register("/sw.js")'),
+      "registers the service worker",
+    ).toBe(true);
   });
 }
 

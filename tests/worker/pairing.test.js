@@ -7,9 +7,11 @@ test("pairing hands a display its own token, with a scannable link", async () =>
   expect(pair.code).toMatch(/^\d{6}$/);
   expect(pair.pairUrl).toBe(`https://kassa.test/display.html?code=${pair.code}`);
   expect(pair.pairQrSvg.startsWith("<svg")).toBe(true);
-  const claim = await (await call("POST", "/api/pair/claim", {
-    body: { code: pair.code },
-  })).json();
+  const claim = await (
+    await call("POST", "/api/pair/claim", {
+      body: { code: pair.code },
+    })
+  ).json();
   expect(claim.roomId).toBe(roomId);
   // The live tests show this token opens a display socket.
   expect(claim.displayToken.length).toBeGreaterThan(40);

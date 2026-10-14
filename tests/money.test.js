@@ -42,15 +42,32 @@ test("basketTotalOre sums quantities", () => {
     { id: "b", priceOre: 2450 },
   ];
   expect(
-    basketTotalOre([{ id: "a", qty: 2 }, { id: "b", qty: 1 }], products),
+    basketTotalOre(
+      [
+        { id: "a", qty: 2 },
+        { id: "b", qty: 1 },
+      ],
+      products,
+    ),
   ).toBe(6430);
   expect(basketTotalOre([], products)).toBe(0);
 });
 
 test("basketTotalOre stays exact where floats would drift", () => {
   // 0.1 + 0.2 !== 0.3 in floating point. In öre this must be exact.
-  const products = [{ id: "a", priceOre: 10 }, { id: "b", priceOre: 20 }];
-  expect(basketTotalOre([{ id: "a", qty: 1 }, { id: "b", qty: 1 }], products)).toBe(30);
+  const products = [
+    { id: "a", priceOre: 10 },
+    { id: "b", priceOre: 20 },
+  ];
+  expect(
+    basketTotalOre(
+      [
+        { id: "a", qty: 1 },
+        { id: "b", qty: 1 },
+      ],
+      products,
+    ),
+  ).toBe(30);
 
   const many = Array.from({ length: 1000 }, (_, i) => ({ id: `p${i}`, priceOre: 1990 }));
   const items = many.map((p) => ({ id: p.id, qty: 3 }));

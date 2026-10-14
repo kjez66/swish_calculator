@@ -81,7 +81,12 @@ body {
   margin: 0;
   /* The phone's own typeface (San Francisco on iPhone, Roboto on Android):
      already refined, and nothing to download at a market stall. */
-  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font:
+    16px / 1.45 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-text-size-adjust: 100%;
@@ -143,7 +148,9 @@ button {
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
   font: inherit;
-  transition: transform 0.12s var(--ease), background-color 0.12s var(--ease);
+  transition:
+    transform 0.12s var(--ease),
+    background-color 0.12s var(--ease);
 }
 button:active:not(:disabled) {
   transform: scale(0.97);

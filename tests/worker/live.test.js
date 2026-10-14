@@ -72,9 +72,11 @@ test("a ticket works exactly once", async () => {
 
 test("an expired ticket is refused", async () => {
   const { roomId, operatorToken } = await configuredRoom();
-  const { ticket } = await (await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
-    token: operatorToken,
-  })).json();
+  const { ticket } = await (
+    await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
+      token: operatorToken,
+    })
+  ).json();
   await runInDurableObject(env.KASSA.getByName(roomId), (instance) => {
     instance.now = () => new Date(Date.now() + 31_000);
   });

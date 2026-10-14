@@ -254,8 +254,8 @@ export class Kassa extends DurableObject {
     const role = safeEqual(hash, room.operatorTokenHash)
       ? "operator"
       : room.displayTokenHashes.some((h) => safeEqual(hash, h))
-      ? "display"
-      : null;
+        ? "display"
+        : null;
     if (!role || (required !== "any" && role !== required)) return null;
     return { role, room };
   }
@@ -267,7 +267,7 @@ export class Kassa extends DurableObject {
     const storage = this.ctx.storage;
 
     if (path === "/api/state" && method === "GET") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       return json({
         settings: (await storage.get("settings")) ?? null,
         products: (await storage.get("products")) ?? [],
@@ -275,7 +275,7 @@ export class Kassa extends DurableObject {
     }
 
     if (path === "/api/settings" && method === "PUT") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const body = await request.json().catch(() => null);
       const storeName = String(body?.storeName ?? "").trim();
       if (!storeName) return fail("invalid_store_name", 400);
@@ -293,7 +293,7 @@ export class Kassa extends DurableObject {
     }
 
     if (path === "/api/products" && method === "PUT") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const body = await request.json().catch(() => null);
       if (!Array.isArray(body)) return fail("invalid_products", 400);
       const seen = new Set();
@@ -320,8 +320,9 @@ export class Kassa extends DurableObject {
     if (path === "/api/pair" && method === "POST") {
       const auth = await this.#authorize(request, "operator");
       if (!auth) return fail("unauthorized", 401);
-      const code = await this.env.DIRECTORY.getByName("global")
-        .createPairCode(auth.room.roomId);
+      const code = await this.env.DIRECTORY.getByName("global").createPairCode(
+        auth.room.roomId,
+      );
       // Scanning this with the display phone's camera opens the display page
       // and pairs it, with no typing. It is not payment data: it only grants the
       // same single-use, 5-minute, read-only pairing the typed code does.
@@ -334,7 +335,7 @@ export class Kassa extends DurableObject {
     }
 
     if (path === "/api/charge" && method === "POST") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const body = await request.json().catch(() => null);
       const chargeId = String(body?.chargeId ?? "");
       const items = body?.items;
@@ -352,8 +353,9 @@ export class Kassa extends DurableObject {
 
       // A disabled product is not for sale: treated as unknown, so a stale
       // basket is refused rather than charged for something taken off the menu.
-      const products = ((await storage.get("products")) ?? [])
-        .filter((p) => p.enabled !== false);
+      const products = ((await storage.get("products")) ?? []).filter(
+        (p) => p.enabled !== false,
+      );
       let totalOre;
       try {
         totalOre = basketTotalOre(items, products);
@@ -421,7 +423,7 @@ export class Kassa extends DurableObject {
     }
 
     if (path === "/api/idle" && method === "POST") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       // `paid: true` (the operator's Klar) makes the display thank the customer
       // and saves the sale; Avbryt sends no body and drops it. A repeat finds
       // the screen idle and saves nothing.
@@ -446,24 +448,25 @@ export class Kassa extends DurableObject {
     }
 
     if (path === "/api/sales" && method === "GET") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const date = url.searchParams.get("date") ?? stockholmDate(this.now());
       if (!DATE.test(date)) return fail("invalid_date", 400);
       const oldest = this.now().getTime() - SALE_TTL_MS;
-      const sales = [...(await storage.list({ prefix: `sale:${date}:` })).values()]
-        .filter((sale) => sale.paidAt > oldest);
+      const sales = [
+        ...(await storage.list({ prefix: `sale:${date}:` })).values(),
+      ].filter((sale) => sale.paidAt > oldest);
       return json({ date, sales });
     }
 
     if (path === "/api/sales" && method === "DELETE") {
-      if (!await this.#authorize(request, "operator")) return fail("unauthorized", 401);
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const date = url.searchParams.get("date") ?? "";
       const orderNo = Number(url.searchParams.get("orderNo"));
       if (!DATE.test(date) || !Number.isInteger(orderNo) || orderNo < 1) {
         return fail("invalid_sale", 400);
       }
       const key = saleKey(date, orderNo);
-      if (!await storage.get(key)) return fail("sale_not_found", 404);
+      if (!(await storage.get(key))) return fail("sale_not_found", 404);
       await storage.delete(key);
       return json({ ok: true });
     }

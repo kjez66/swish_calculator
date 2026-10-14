@@ -15,24 +15,27 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (
-    request.method !== "GET" || url.origin !== self.location.origin ||
+    request.method !== "GET" ||
+    url.origin !== self.location.origin ||
     url.pathname.startsWith("/api/")
   ) {
     return;
   }
-  event.respondWith((async () => {
-    try {
-      const response = await fetch(request);
-      if (response.ok) {
-        const copy = response.clone();
-        event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
+  event.respondWith(
+    (async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)));
+        }
+        return response;
+      } catch (err) {
+        // display?code=… offline still finds the cached page.
+        const cached = await caches.match(request, { ignoreSearch: true });
+        if (cached) return cached;
+        throw err;
       }
-      return response;
-    } catch (err) {
-      // display?code=… offline still finds the cached page.
-      const cached = await caches.match(request, { ignoreSearch: true });
-      if (cached) return cached;
-      throw err;
-    }
-  })());
+    })(),
+  );
 });

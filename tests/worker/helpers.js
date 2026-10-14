@@ -47,9 +47,11 @@ export async function configuredRoom() {
   ];
   await room.api("PUT", "/api/products", { body: products });
   const charge = async (items, expectedTotalOre, chargeId = crypto.randomUUID()) =>
-    await (await room.api("POST", "/api/charge", {
-      body: { chargeId, items, expectedTotalOre },
-    })).json();
+    await (
+      await room.api("POST", "/api/charge", {
+        body: { chargeId, items, expectedTotalOre },
+      })
+    ).json();
   const idle = (paid) => room.api("POST", "/api/idle", paid ? { body: { paid } } : {});
   const sales = async (date) =>
     await (await room.api("GET", `/api/sales${date ? `?date=${date}` : ""}`)).json();
@@ -62,9 +64,11 @@ export async function configuredRoom() {
  * skipping (and keeping) others; it fails after two seconds.
  */
 export async function openSocket(roomId, token) {
-  const { ticket } = await (await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
-    token,
-  })).json();
+  const { ticket } = await (
+    await call("POST", `/api/stream-ticket?roomId=${roomId}`, {
+      token,
+    })
+  ).json();
   const res = await call("GET", `/api/events?roomId=${roomId}&ticket=${ticket}`, {
     headers: { Upgrade: "websocket" },
   });

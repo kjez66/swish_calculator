@@ -37,8 +37,8 @@ async function api(method, path, body) {
 const ERRORS = {
   not_configured: "Ange butiksnamn och Swish-nummer i inställningar.",
   empty_basket: "Korgen är tom.",
-  unknown_product: "En produkt i korgen finns inte längre eller är avstängd. " +
-    "Uppdaterar listan.",
+  unknown_product:
+    "En produkt i korgen finns inte längre eller är avstängd. " + "Uppdaterar listan.",
   bad_quantity: "Ogiltigt antal.",
   amount_too_low: "Beloppet är under 1 kr.",
   amount_too_high: "Beloppet är orimligt högt. Kontrollera korgen.",
@@ -60,7 +60,8 @@ function renderProducts() {
     const [text, action] = products.length
       ? ["Alla produkter är avstängda.", "Slå på produkter"]
       : ["Inga produkter än.", "Lägg till produkter"];
-    $("grid").innerHTML = `<div class="empty"><p>${text}</p>` +
+    $("grid").innerHTML =
+      `<div class="empty"><p>${text}</p>` +
       `<button class="icon-btn" id="emptyAdd">${action}</button></div>`;
     $("emptyAdd").onclick = openSettings;
     return;
@@ -75,10 +76,9 @@ function renderProducts() {
       `${p.name}, ${formatOre(p.priceOre)} kr${qty ? `, ${qty} i korgen` : ""}`,
     );
     btn.innerHTML =
-      `<span>${escapeHtml(p.name)}</span><span class="price">${
-        formatOre(p.priceOre)
-      }</span>` +
-      (qty ? `<span class="qty">${qty}</span>` : "");
+      `<span>${escapeHtml(p.name)}</span><span class="price">${formatOre(
+        p.priceOre,
+      )}</span>` + (qty ? `<span class="qty">${qty}</span>` : "");
     btn.onclick = () => changeQty(p.id, +1);
     $("grid").append(btn);
   }
@@ -115,7 +115,8 @@ function renderBasket() {
     const row = document.createElement("div");
     row.className = "line";
     const name = escapeHtml(p.name);
-    row.innerHTML = `<span class="name">${name}</span>` +
+    row.innerHTML =
+      `<span class="name">${name}</span>` +
       `<button class="minus" data-focus="minus:${id}" aria-label="En ${name} mindre">−</button>` +
       `<span class="qty-n">${qty}</span>` +
       `<button class="plus" data-focus="plus:${id}" aria-label="En ${name} till">+</button>` +
@@ -151,8 +152,8 @@ function renderBasket() {
   $("buyBtn").textContent = inFlight
     ? "Skapar QR…"
     : items.length
-    ? `Ta betalt ${formatOre(total)} kr`
-    : "Ta betalt";
+      ? `Ta betalt ${formatOre(total)} kr`
+      : "Ta betalt";
   return { items, total };
 }
 
@@ -166,7 +167,8 @@ function renderAll() {
   const result = renderBasket();
   if (focused) {
     const id = focused.slice(focused.indexOf(":") + 1);
-    const target = document.querySelector(`[data-focus="${CSS.escape(focused)}"]`) ??
+    const target =
+      document.querySelector(`[data-focus="${CSS.escape(focused)}"]`) ??
       document.querySelector(`[data-focus="${CSS.escape(`tile:${id}`)}"]`);
     target?.focus();
   }
@@ -245,8 +247,13 @@ async function endCharge() {
     announce("Betalningen avslutad. Korgen är tom.");
   }
   if (reason === "server") return;
-  idleDone = api("POST", "/api/idle", reason === "paid" ? { paid: true } : undefined)
-    .catch(() => {/* the display will resync on its next event */});
+  idleDone = api(
+    "POST",
+    "/api/idle",
+    reason === "paid" ? { paid: true } : undefined,
+  ).catch(() => {
+    /* the display will resync on its next event */
+  });
   await idleDone;
 }
 // The last /api/idle request. A new charge waits for it: otherwise a quick
@@ -312,7 +319,8 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
   row.dataset.id = p.id;
   // Visible "Namn" and "Pris … kr" labels: a placeholder alone disappears once
   // typed in (WCAG 3.3.2). Each aria-label contains its visible label (2.5.3).
-  row.innerHTML = `<div class="row"><span class="unit" aria-hidden="true">Namn</span>` +
+  row.innerHTML =
+    `<div class="row"><span class="unit" aria-hidden="true">Namn</span>` +
     `<input class="name" value="${escapeHtml(p.name)}" aria-label="Namn">` +
     `<label class="toggle" title="Visa produkten i kassan">` +
     `<input type="checkbox" class="enabled" role="switch"${
@@ -448,8 +456,10 @@ $("saveSettings").onclick = async () => {
     await api("PUT", "/api/products", next);
   } catch (err) {
     if (err.message === "invalid_payee") {
-      fieldError($("fPayee"), "Numret ser inte giltigt ut. Skriv t.ex. 070-123 45 67.")
-        .focus();
+      fieldError(
+        $("fPayee"),
+        "Numret ser inte giltigt ut. Skriv t.ex. 070-123 45 67.",
+      ).focus();
     } else if (err.message === "invalid_store_name") {
       fieldError($("fName"), "Ange ett butiksnamn.").focus();
     } else {
@@ -475,9 +485,8 @@ const todayInStockholm = () => stockholmDay(Date.now());
  */
 function salesDays() {
   const today = Date.parse(`${todayInStockholm()}T00:00:00Z`);
-  return Array.from(
-    { length: 31 },
-    (_, i) => new Date(today - i * 24 * 60 * 60_000).toISOString().slice(0, 10),
+  return Array.from({ length: 31 }, (_, i) =>
+    new Date(today - i * 24 * 60 * 60_000).toISOString().slice(0, 10),
   );
 }
 const clockTime = (ms) =>
@@ -497,18 +506,18 @@ function saleItem(sale, date) {
   li.innerHTML =
     `<div class="order-head"><span>#${n} · ${clockTime(sale.paidAt)}</span>` +
     `<span>${formatOre(sale.totalOre)} kr</span></div>` +
-    `<div class="order-lines">${
-      sale.lines.map((l) => `${l.qty} × ${escapeHtml(l.name)}`).join(", ")
-    }</div><div class="order-actions"></div>`;
+    `<div class="order-lines">${sale.lines
+      .map((l) => `${l.qty} × ${escapeHtml(l.name)}`)
+      .join(", ")}</div><div class="order-actions"></div>`;
   const actions = li.querySelector(".order-actions");
 
   const showRemove = () => {
-    actions.innerHTML =
-      `<button class="link-btn del-sale" aria-label="Ta bort köp #${n}">Ta bort</button>`;
+    actions.innerHTML = `<button class="link-btn del-sale" aria-label="Ta bort köp #${n}">Ta bort</button>`;
     actions.querySelector(".del-sale").onclick = showConfirm;
   };
   const showConfirm = () => {
-    actions.innerHTML = `<span class="confirm-q">Ta bort köp #${n}?</span>` +
+    actions.innerHTML =
+      `<span class="confirm-q">Ta bort köp #${n}?</span>` +
       `<button class="icon-btn keep">Behåll</button>` +
       `<button class="icon-btn danger-btn confirm">Ta bort</button>`;
     const confirm = actions.querySelector(".confirm");
@@ -565,10 +574,13 @@ async function loadSales({ afterRemoving } = {}) {
     if (afterRemoving) $("salesDate").focus();
     return;
   }
-  const rows = summary.products.map((p) =>
-    `<tr><td>${escapeHtml(p.name)}</td><td>${p.qty}</td>` +
-    `<td>${formatOre(p.totalOre)}</td></tr>`
-  ).join("");
+  const rows = summary.products
+    .map(
+      (p) =>
+        `<tr><td>${escapeHtml(p.name)}</td><td>${p.qty}</td>` +
+        `<td>${formatOre(p.totalOre)}</td></tr>`,
+    )
+    .join("");
   $("salesBody").innerHTML =
     `<div class="sales-total"><span>${summary.count} köp</span>` +
     `<b>${formatOre(summary.totalOre)} kr</b></div>` +
@@ -590,9 +602,12 @@ async function loadSales({ afterRemoving } = {}) {
 
 $("salesBtn").onclick = () => {
   // Rebuilt on every opening, so a kassa left open overnight gets the new day.
-  $("salesDate").innerHTML = salesDays().map((day, i) =>
-    `<option value="${day}">${day}${[" (idag)", " (igår)"][i] ?? ""}</option>`
-  ).join("");
+  $("salesDate").innerHTML = salesDays()
+    .map(
+      (day, i) =>
+        `<option value="${day}">${day}${[" (idag)", " (igår)"][i] ?? ""}</option>`,
+    )
+    .join("");
   $("salesDlg").showModal();
   loadSales();
 };
@@ -649,7 +664,7 @@ async function connect() {
     const { ticket } = await Promise.race([
       api("POST", "/api/stream-ticket"),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), TICKET_TIMEOUT_MS)
+        setTimeout(() => reject(new Error("timeout")), TICKET_TIMEOUT_MS),
       ),
     ]);
     const scheme = location.protocol === "https:" ? "wss" : "ws";

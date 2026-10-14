@@ -39,7 +39,7 @@ export default {
     const directory = env.DIRECTORY.getByName("global");
 
     if (path === "/api/rooms" && request.method === "POST") {
-      if (!await directory.allow("rooms", await hashToken(ip), ROOMS_PER_MINUTE)) {
+      if (!(await directory.allow("rooms", await hashToken(ip), ROOMS_PER_MINUTE))) {
         return fail("rate_limited", 429);
       }
       const roomId = crypto.randomUUID();
@@ -48,12 +48,12 @@ export default {
 
     if (path === "/api/pair/claim" && request.method === "POST") {
       // Rate limiting is what keeps a 6-digit code from being brute-forced.
-      if (!await directory.allow("pair", await hashToken(ip), PAIR_CLAIMS_PER_MINUTE)) {
+      if (!(await directory.allow("pair", await hashToken(ip), PAIR_CLAIMS_PER_MINUTE))) {
         return fail("rate_limited", 429);
       }
       const body = await request.json().catch(() => null);
       const roomId = await directory.claimPairCode(String(body?.code ?? ""));
-      const displayToken = roomId && await env.KASSA.getByName(roomId).addDisplay();
+      const displayToken = roomId && (await env.KASSA.getByName(roomId).addDisplay());
       if (!displayToken) return fail("invalid_code", 404);
       return json({ roomId, displayToken });
     }

@@ -9,7 +9,10 @@ const DAY = 24 * 60 * 60_000;
 test("Klar saves the sale with its lines, as charged", async () => {
   const { api, products, charge, idle, sales } = await configuredRoom();
   const { orderNo } = await charge(
-    [{ id: "kaffe", qty: 2 }, { id: "loka", qty: 1 }],
+    [
+      { id: "kaffe", qty: 2 },
+      { id: "loka", qty: 1 },
+    ],
     5500,
   );
   await idle(true);
@@ -63,9 +66,9 @@ test("sales list in order-number order past #9", async () => {
     await charge([{ id: "loka", qty: 1 }], 1500);
     await idle(true);
   }
-  expect((await sales()).sales.map((s) => s.orderNo)).toEqual(
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-  );
+  expect((await sales()).sales.map((s) => s.orderNo)).toEqual([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  ]);
 });
 
 test("DELETE /api/sales removes one sale, once", async () => {

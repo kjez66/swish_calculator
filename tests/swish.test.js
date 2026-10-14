@@ -21,9 +21,14 @@ test("normalizePayee accepts merchant numbers unchanged", () => {
 
 test("normalizePayee rejects anything that is not a Swish number", () => {
   // 08 is a landline; 12 digits is not a Swish number; letters never are.
-  for (
-    const bad of ["", "12345", "0801234567", "070123456789", "07012345ab", "9991234567"]
-  ) {
+  for (const bad of [
+    "",
+    "12345",
+    "0801234567",
+    "070123456789",
+    "07012345ab",
+    "9991234567",
+  ]) {
     expect(() => normalizePayee(bad), bad).toThrow("invalid_payee");
   }
 });

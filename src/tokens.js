@@ -13,7 +13,9 @@
 export function randomToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 /**
@@ -22,7 +24,7 @@ export function randomToken() {
 export function randomPairCode() {
   const buf = new Uint32Array(1);
   // Reject values in the final partial bucket so the modulo stays uniform.
-  const limit = Math.floor(0xFFFFFFFF / 1_000_000) * 1_000_000;
+  const limit = Math.floor(0xffffffff / 1_000_000) * 1_000_000;
   let n;
   do {
     crypto.getRandomValues(buf);
