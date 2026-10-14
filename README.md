@@ -196,7 +196,7 @@ switching later is a settings change.
 | `src/qr.js`, `src/render.js` | Swish payload → QR code SVG |
 | `public/index.html`, `app.js`, `style.css` | The operator page |
 | `public/display.html`, `display.js` | The customer display (ES5, for old phones) |
-| `public/shared/` | Money, Swish payload and sales summary code, shared by browser and server |
+| `public/shared/` | Money, Swish payload, sales summary and PDF report code; the server shares money and Swish code |
 | `public/*.webmanifest`, `sw.js`, `icons/` | Installing as apps (`icons/*.svg` are the sources of the PNGs) |
 | `tests/worker/` | Server tests: `npm test` |
 | `tests/*.test.js` | Shared code, pages, PWA files and display.js staying ES5: `npm test` |
