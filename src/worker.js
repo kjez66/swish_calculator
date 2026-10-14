@@ -26,6 +26,7 @@ const KASSA_ROUTES = new Set([
   "/api/charge",
   "/api/idle",
   "/api/sales",
+  "/api/sales/days",
 ]);
 
 export default {

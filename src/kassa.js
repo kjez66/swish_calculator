@@ -458,6 +458,17 @@ export class Kassa extends DurableObject {
       return json({ date, sales });
     }
 
+    if (path === "/api/sales/days" && method === "GET") {
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
+      // The days the sales report can offer: those with a sale still within 31 days.
+      const oldest = this.now().getTime() - SALE_TTL_MS;
+      const days = new Set();
+      for (const sale of (await storage.list({ prefix: "sale:" })).values()) {
+        if (sale.paidAt > oldest) days.add(sale.date);
+      }
+      return json({ days: [...days].sort().reverse() });
+    }
+
     if (path === "/api/sales" && method === "DELETE") {
       if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
       const date = url.searchParams.get("date") ?? "";

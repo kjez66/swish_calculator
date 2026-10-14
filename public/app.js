@@ -479,15 +479,16 @@ const stockholmDay = (ms) =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: STOCKHOLM }).format(new Date(ms));
 const todayInStockholm = () => stockholmDay(Date.now());
 /**
- * The days the date list offers, newest first, as YYYY-MM-DD: today and the 30
- * before, since the server keeps a sale 31 days. Counted on the calendar in UTC,
- * so a summer-time change cannot skip or repeat a day.
+ * A YYYY-MM-DD day as the date list shows it, with today and yesterday marked.
+ * Yesterday is counted on the calendar in UTC, so a summer-time change cannot
+ * skip or repeat a day.
  */
-function salesDays() {
-  const today = Date.parse(`${todayInStockholm()}T00:00:00Z`);
-  return Array.from({ length: 31 }, (_, i) =>
-    new Date(today - i * 24 * 60 * 60_000).toISOString().slice(0, 10),
-  );
+function dayLabel(day) {
+  const today = todayInStockholm();
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 24 * 60 * 60_000)
+    .toISOString()
+    .slice(0, 10);
+  return day + (day === today ? " (idag)" : day === yesterday ? " (igår)" : "");
 }
 const clockTime = (ms) =>
   new Date(ms).toLocaleTimeString("sv-SE", {
@@ -547,8 +548,12 @@ function saleItem(sale, date) {
   return li;
 }
 
-/** @param {{afterRemoving?: number}} [options] the order number just removed */
-async function loadSales({ afterRemoving } = {}) {
+/**
+ * @param {{afterRemoving?: number, dayEmptied?: boolean}} [options]
+ *   afterRemoving: the order number just removed; dayEmptied: that removal
+ *   emptied its day, so the list moved to another day
+ */
+async function loadSales({ afterRemoving, dayEmptied } = {}) {
   const date = $("salesDate").value || todayInStockholm();
   // After a removal the list stays put until the new one is in, rather than
   // flashing "Hämtar…" under the operator's thumb.
@@ -563,15 +568,21 @@ async function loadSales({ afterRemoving } = {}) {
   // A slower answer for a date the user has since changed away from.
   if (($("salesDate").value || todayInStockholm()) !== date) return;
   const summary = summarizeSales(sales);
-  const said = `${summary.count} köp, totalt ${formatOre(summary.totalOre)} kr.`;
+  // The day just emptied leaves the date list.
+  if (!sales.length && afterRemoving && !dayEmptied) {
+    return showSalesDays({ afterRemoving });
+  }
+  const said =
+    (dayEmptied ? `Visar ${date}. ` : "") +
+    `${summary.count} köp, totalt ${formatOre(summary.totalOre)} kr.`;
   // Spoken from inside the dialog: the page's own status region is inert
   // behind a modal. The table itself is not read out on every load.
   $("salesAnnounce").textContent = afterRemoving
     ? `Köp #${afterRemoving} borttaget. ${said}`
     : said;
   if (!sales.length) {
+    // A day another phone emptied after the date list was built.
     $("salesBody").innerHTML = `<p class="note sales-total">Inga köp detta datum.</p>`;
-    if (afterRemoving) $("salesDate").focus();
     return;
   }
   const rows = summary.products
@@ -592,7 +603,10 @@ async function loadSales({ afterRemoving } = {}) {
   // Latest first: after a match, the last sales are the ones to check.
   const list = $("salesBody").querySelector("ol");
   for (const sale of [...sales].reverse()) list.append(saleItem(sale, date));
-  if (afterRemoving) {
+  if (dayEmptied) {
+    // The removed row went with its day; focus where the new day was picked.
+    $("salesDate").focus();
+  } else if (afterRemoving) {
     // The removed row's buttons are gone; keep the list open and focus in it.
     const details = $("salesBody").querySelector("details");
     details.open = true;
@@ -600,16 +614,44 @@ async function loadSales({ afterRemoving } = {}) {
   }
 }
 
-$("salesBtn").onclick = () => {
-  // Rebuilt on every opening, so a kassa left open overnight gets the new day.
-  $("salesDate").innerHTML = salesDays()
-    .map(
-      (day, i) =>
-        `<option value="${day}">${day}${[" (idag)", " (igår)"][i] ?? ""}</option>`,
-    )
+/**
+ * Fill the date list with the days that have sales, newest first, and show the
+ * newest. With none in the last 31 days there is nothing to pick: the list is
+ * hidden and the dialog says so.
+ * @param {{afterRemoving?: number}} [options] the order number just removed
+ */
+async function showSalesDays({ afterRemoving } = {}) {
+  const picker = [$("salesDateLabel"), $("salesDate")];
+  if (!afterRemoving) {
+    for (const el of picker) el.hidden = true;
+    $("salesBody").innerHTML = `<p class="note">Hämtar…</p>`;
+  }
+  let days;
+  try {
+    ({ days } = await api("GET", "/api/sales/days"));
+  } catch {
+    $("salesBody").innerHTML = `<p class="err">Kunde inte hämta försäljningen.</p>`;
+    return;
+  }
+  for (const el of picker) el.hidden = !days.length;
+  if (!days.length) {
+    const none = "Inga köp de senaste 31 dagarna.";
+    $("salesBody").innerHTML = `<p class="note sales-total">${none}</p>`;
+    $("salesAnnounce").textContent =
+      (afterRemoving ? `Köp #${afterRemoving} borttaget. ` : "") + none;
+    if (afterRemoving) $("closeSales").focus();
+    return;
+  }
+  $("salesDate").innerHTML = days
+    .map((day) => `<option value="${day}">${dayLabel(day)}</option>`)
     .join("");
+  await loadSales({ afterRemoving, dayEmptied: Boolean(afterRemoving) });
+}
+
+// Rebuilt on every opening, so new sales and a new day show up.
+$("salesBtn").onclick = () => {
   $("salesDlg").showModal();
-  loadSales();
+  showSalesDays();
 };
 $("salesDate").onchange = loadSales;
 $("closeSales").onclick = () => $("salesDlg").close();

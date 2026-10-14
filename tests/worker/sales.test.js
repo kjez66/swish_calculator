@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { expect, test } from "vitest";
 import { stockholmDate } from "../../src/dates.js";
-import { configuredRoom, newRoom } from "./helpers.js";
+import { call, configuredRoom, newRoom, pairDisplay } from "./helpers.js";
 
 const DAY = 24 * 60 * 60_000;
 
@@ -152,4 +152,49 @@ test("a sale older than 31 days is never listed, and the alarm deletes it", asyn
       "sale:2026-09-01:000002",
     ]);
   });
+});
+
+test("GET /api/sales/days lists the days with sales, newest first", async () => {
+  const { roomId, api } = await newRoom();
+  const days = async () => await (await api("GET", "/api/sales/days")).json();
+  expect(await days()).toEqual({ days: [] });
+
+  const stub = env.KASSA.getByName(roomId);
+  const now = Date.now();
+  await runInDurableObject(stub, async (_, state) => {
+    const put = (date, orderNo, paidAt) =>
+      state.storage.put(`sale:${date}:${String(orderNo).padStart(6, "0")}`, {
+        orderNo,
+        date,
+        totalOre: 1500,
+        lines: [],
+        paidAt,
+      });
+    await put("2026-09-01", 1, now - 31 * DAY - 1000); // expired: not a sales day
+    await put("2026-09-02", 1, now - 31 * DAY - 1000); // one expired, one kept
+    await put("2026-09-02", 2, now - 30 * DAY);
+    await put("2026-09-20", 1, now - 10 * DAY);
+    await put("2026-09-20", 2, now - 10 * DAY);
+    await put("2026-09-10", 1, now - 20 * DAY);
+  });
+  expect(await days()).toEqual({ days: ["2026-09-20", "2026-09-10", "2026-09-02"] });
+});
+
+test("a day leaves the sales days when its last sale is removed", async () => {
+  const { api, charge, idle } = await configuredRoom();
+  const days = async () => (await (await api("GET", "/api/sales/days")).json()).days;
+  const { orderNo } = await charge([{ id: "kaffe", qty: 1 }], 2000);
+  await idle(true);
+  const today = stockholmDate(new Date());
+  expect(await days()).toEqual([today]);
+  await api("DELETE", `/api/sales?date=${today}&orderNo=${orderNo}`);
+  expect(await days()).toEqual([]);
+});
+
+test("only the operator can list the sales days", async () => {
+  const { roomId, api } = await newRoom();
+  const displayToken = await pairDisplay(api);
+  const path = `/api/sales/days?roomId=${roomId}`;
+  expect((await call("GET", path, { token: displayToken })).status).toBe(401);
+  expect((await call("GET", path)).status).toBe(401);
 });
