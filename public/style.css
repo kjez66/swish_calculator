@@ -246,8 +246,12 @@ button:active:not(:disabled) {
   padding-left: 12px;
   white-space: nowrap;
 }
+/* An icon-btn alone is white on the white dialog in the light theme; the field
+   border keeps it at least 3:1 against the dialog in both themes. */
 .sales-pdf {
   margin-top: 12px;
+  border: 2px solid var(--field-border);
+  font-weight: 600;
 }
 .sales-orders summary {
   min-height: 44px;
