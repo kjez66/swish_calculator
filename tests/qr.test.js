@@ -1,5 +1,5 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
 import jsQR from "jsqr";
+import { expect, test } from "vitest";
 import { QUIET_ZONE_MODULES, toMatrix, toSvg } from "../src/qr.js";
 
 const PAYLOAD = "C0701234567;249.00;Kaffebaren #47;0";
@@ -28,67 +28,66 @@ function rasterize(matrix, scale = 8, quiet = QUIET_ZONE_MODULES) {
   return { px, side };
 }
 
-Deno.test("a generated QR decodes back to the exact payload", () => {
+test("a generated QR decodes back to the exact payload", () => {
   const { px, side } = rasterize(toMatrix(PAYLOAD));
   const decoded = jsQR(px, side, side);
-  assertEquals(decoded?.data, PAYLOAD);
+  expect(decoded?.data).toBe(PAYLOAD);
 });
 
-Deno.test("Swedish characters survive the round-trip", () => {
+test("Swedish characters survive the round-trip", () => {
   // Without the UTF-8 stringToBytes override the encoder emits Latin-1 and these
   // come back as mojibake.
   const payload = "C0701234567;99.00;Åsas Bröd åäö #3;0";
   const { px, side } = rasterize(toMatrix(payload));
-  assertEquals(jsQR(px, side, side)?.data, payload);
+  expect(jsQR(px, side, side)?.data).toBe(payload);
 });
 
-Deno.test("a long note at the message limit still decodes", () => {
+test("a long note at the message limit still decodes", () => {
   const payload = `C0701234567;19999.00;${"ä".repeat(50)};0`;
   const { px, side } = rasterize(toMatrix(payload));
-  assertEquals(jsQR(px, side, side)?.data, payload);
+  expect(jsQR(px, side, side)?.data).toBe(payload);
 });
 
-Deno.test("toMatrix returns a square boolean matrix", () => {
+test("toMatrix returns a square boolean matrix", () => {
   const m = toMatrix(PAYLOAD);
-  assertEquals(Array.isArray(m), true);
-  for (const row of m) assertEquals(row.length, m.length);
-  assertEquals(typeof m[0][0], "boolean");
+  expect(Array.isArray(m)).toBe(true);
+  for (const row of m) expect(row.length).toBe(m.length);
+  expect(typeof m[0][0]).toBe("boolean");
 });
 
-Deno.test("toSvg includes a four-module quiet zone in its viewBox", () => {
+test("toSvg includes a four-module quiet zone in its viewBox", () => {
   const n = toMatrix(PAYLOAD).length;
   const svg = toSvg(PAYLOAD);
-  assertEquals(QUIET_ZONE_MODULES, 4);
-  assertStringIncludes(svg, `viewBox="0 0 ${n + 8} ${n + 8}"`);
+  expect(QUIET_ZONE_MODULES).toBe(4);
+  expect(svg).toContain(`viewBox="0 0 ${n + 8} ${n + 8}"`);
 });
 
-Deno.test("toSvg paints an opaque white background", () => {
+test("toSvg paints an opaque white background", () => {
   // A transparent QR inheriting a dark page background is unscannable.
   const svg = toSvg(PAYLOAD);
-  assertStringIncludes(svg, '<rect width="100%" height="100%" fill="#ffffff"');
-  assertEquals(svg.includes('fill="none"'), false);
-  assertEquals(svg.includes("transparent"), false);
+  expect(svg).toContain('<rect width="100%" height="100%" fill="#ffffff"');
+  expect(svg.includes('fill="none"')).toBe(false);
+  expect(svg.includes("transparent")).toBe(false);
 });
 
-Deno.test("toSvg draws crisp edges and scales without a fixed pixel size", () => {
+test("toSvg draws crisp edges and scales without a fixed pixel size", () => {
   const svg = toSvg(PAYLOAD);
-  assertStringIncludes(svg, 'shape-rendering="crispEdges"');
-  assertEquals(/\swidth="\d+px"/.test(svg), false);
+  expect(svg).toContain('shape-rendering="crispEdges"');
+  expect(/\swidth="\d+px"/.test(svg)).toBe(false);
 });
 
-Deno.test("the SVG path covers exactly the dark modules of the matrix", () => {
+test("the SVG path covers exactly the dark modules of the matrix", () => {
   const matrix = toMatrix(PAYLOAD);
   const expectedDark = matrix.flat().filter(Boolean).length;
   const svg = toSvg(PAYLOAD);
   // One "M<x> <y>h1v1H<x>z" sub-path is emitted per dark module.
   const drawn = (svg.match(/M\d+ \d+h1v1H\d+z/g) ?? []).length;
-  assertEquals(drawn, expectedDark);
+  expect(drawn).toBe(expectedDark);
 });
 
-Deno.test("toSvg names the code for screen readers, escaping the label", () => {
-  assertStringIncludes(toSvg(PAYLOAD), 'role="img" aria-label="Swish QR-kod"');
-  assertStringIncludes(
-    toSvg(PAYLOAD, 'Kod för "A" & <B>'),
+test("toSvg names the code for screen readers, escaping the label", () => {
+  expect(toSvg(PAYLOAD)).toContain('role="img" aria-label="Swish QR-kod"');
+  expect(toSvg(PAYLOAD, 'Kod för "A" & <B>')).toContain(
     'aria-label="Kod för &quot;A&quot; &amp; &lt;B&gt;"',
   );
 });

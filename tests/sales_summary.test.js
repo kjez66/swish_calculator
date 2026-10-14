@@ -1,7 +1,7 @@
-import { assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { summarizeSales } from "../public/shared/sales.js";
 
-Deno.test("summarizeSales totals the day per product", () => {
+test("summarizeSales totals the day per product", () => {
   const line = (productId, name, priceOre, qty) => ({ productId, name, priceOre, qty });
   const summary = summarizeSales([
     {
@@ -13,7 +13,7 @@ Deno.test("summarizeSales totals the day per product", () => {
     // A price change during the day: still one product, summed at each price.
     { orderNo: 3, totalOre: 2500, lines: [line("k", "Bryggkaffe", 2500, 1)] },
   ]);
-  assertEquals(summary, {
+  expect(summary).toEqual({
     count: 3,
     totalOre: 10000,
     products: [
@@ -21,5 +21,5 @@ Deno.test("summarizeSales totals the day per product", () => {
       { productId: "l", name: "Loka", qty: 1, totalOre: 1500 },
     ],
   });
-  assertEquals(summarizeSales([]), { count: 0, totalOre: 0, products: [] });
+  expect(summarizeSales([])).toEqual({ count: 0, totalOre: 0, products: [] });
 });
