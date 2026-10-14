@@ -27,6 +27,18 @@
   --shadow-up: 0 -8px 24px rgba(0, 0, 0, 0.45);
   --shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.6);
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Product categories: a tile's tint and, a step stronger in the same hue, its
+     edge. Text and price stay at 4.5:1 or more on every tint. */
+  --cat-dryck: #1b2a3e;
+  --cat-dryck-edge: #2c4566;
+  --cat-mat: #382a1e;
+  --cat-mat-edge: #5a412b;
+  --cat-fika: #382231;
+  --cat-fika-edge: #5a354c;
+  --cat-godis: #2a2443;
+  --cat-godis-edge: #463b69;
+  --cat-ovrigt: #34301b;
+  --cat-ovrigt-edge: #554c28;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -49,6 +61,16 @@
     --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 6px rgba(16, 24, 40, 0.06);
     --shadow-up: 0 -8px 24px rgba(16, 24, 40, 0.08);
     --shadow-dialog: 0 24px 56px rgba(16, 24, 40, 0.2);
+    --cat-dryck: #e7f0fc;
+    --cat-dryck-edge: #c4d9f5;
+    --cat-mat: #fdeee1;
+    --cat-mat-edge: #f5d3b5;
+    --cat-fika: #fbe8f0;
+    --cat-fika-edge: #f1c9da;
+    --cat-godis: #efe9fc;
+    --cat-godis-edge: #d6cbf4;
+    --cat-ovrigt: #faf3d6;
+    --cat-ovrigt-edge: #ecdc9c;
     color-scheme: light;
   }
 }
@@ -365,6 +387,27 @@ main {
   color: var(--muted);
   padding: 40px 0;
 }
+/* Each category sets the tint its tiles and its settings swatch use. */
+[data-category="dryck"] {
+  --tint: var(--cat-dryck);
+  --tint-edge: var(--cat-dryck-edge);
+}
+[data-category="mat"] {
+  --tint: var(--cat-mat);
+  --tint-edge: var(--cat-mat-edge);
+}
+[data-category="fika"] {
+  --tint: var(--cat-fika);
+  --tint-edge: var(--cat-fika-edge);
+}
+[data-category="godis"] {
+  --tint: var(--cat-godis);
+  --tint-edge: var(--cat-godis-edge);
+}
+[data-category="ovrigt"] {
+  --tint: var(--cat-ovrigt);
+  --tint-edge: var(--cat-ovrigt-edge);
+}
 
 /* --- basket: a bottom sheet ------------------------------------------------- */
 .basket {
@@ -630,15 +673,28 @@ input[aria-invalid] {
 .product-row .row + .row {
   margin-top: 6px;
 }
-/* "Namn" and "Pris" share a width so both inputs start in line. */
+/* "Namn", "Pris" and "Kategori" share a width so the fields start in line. */
 .product-row .row > .unit:first-child {
   flex: none;
-  width: 40px;
+  width: 60px;
 }
 .product-row input.name,
-.product-row input.price {
+.product-row input.price,
+.product-row select.category {
   flex: 1;
   min-width: 0;
+}
+/* The chosen category's colour beside its list; a dashed ring for Ingen. */
+.swatch {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px dashed var(--field-border);
+}
+.swatch[data-category] {
+  background: var(--tint);
+  border: 2px solid var(--tint-edge);
 }
 .unit {
   font-size: 14px;
