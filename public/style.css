@@ -29,16 +29,16 @@
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   /* Product categories: a tile's tint and, a step stronger in the same hue, its
      edge. Text and price stay at 4.5:1 or more on every tint. */
-  --cat-dryck: #1b2a3e;
-  --cat-dryck-edge: #2c4566;
-  --cat-mat: #382a1e;
-  --cat-mat-edge: #5a412b;
-  --cat-fika: #382231;
-  --cat-fika-edge: #5a354c;
-  --cat-godis: #2a2443;
-  --cat-godis-edge: #463b69;
-  --cat-ovrigt: #34301b;
-  --cat-ovrigt-edge: #554c28;
+  --cat-dryck: #182f3f;
+  --cat-dryck-edge: #2e526b;
+  --cat-mat: #3d2a1a;
+  --cat-mat-edge: #66472e;
+  --cat-fika: #3b1c27;
+  --cat-fika-edge: #663346;
+  --cat-godis: #2c1f41;
+  --cat-godis-edge: #4d3b6d;
+  --cat-ovrigt: #362f17;
+  --cat-ovrigt-edge: #5b5129;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -61,16 +61,16 @@
     --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 6px rgba(16, 24, 40, 0.06);
     --shadow-up: 0 -8px 24px rgba(16, 24, 40, 0.08);
     --shadow-dialog: 0 24px 56px rgba(16, 24, 40, 0.2);
-    --cat-dryck: #e7f0fc;
-    --cat-dryck-edge: #c4d9f5;
-    --cat-mat: #fdeee1;
-    --cat-mat-edge: #f5d3b5;
-    --cat-fika: #fbe8f0;
-    --cat-fika-edge: #f1c9da;
-    --cat-godis: #efe9fc;
-    --cat-godis-edge: #d6cbf4;
-    --cat-ovrigt: #faf3d6;
-    --cat-ovrigt-edge: #ecdc9c;
+    --cat-dryck: #def0fc;
+    --cat-dryck-edge: #a8d2f0;
+    --cat-mat: #fde9d8;
+    --cat-mat-edge: #f5c8a3;
+    --cat-fika: #fce3ec;
+    --cat-fika-edge: #f1bccf;
+    --cat-godis: #ece3fc;
+    --cat-godis-edge: #d0beef;
+    --cat-ovrigt: #fbf1cb;
+    --cat-ovrigt-edge: #ead686;
     color-scheme: light;
   }
 }
@@ -358,6 +358,15 @@ main {
   hyphens: auto;
 }
 .product:active {
+  background: var(--accent-soft);
+}
+/* A category tints the tile; its edge, a step stronger in the same hue, keeps a
+   pale tile crisp against the page. Pressed still shows, as on a plain tile. */
+.product[data-category] {
+  background: var(--tint);
+  border: 1px solid var(--tint-edge);
+}
+.product[data-category]:active {
   background: var(--accent-soft);
 }
 .product .price {
@@ -692,9 +701,10 @@ input[aria-invalid] {
   border-radius: 50%;
   border: 2px dashed var(--field-border);
 }
+/* Solid in the edge colour: the pale tint alone barely shows at this size. */
 .swatch[data-category] {
-  background: var(--tint);
-  border: 2px solid var(--tint-edge);
+  background: var(--tint-edge);
+  border: 0;
 }
 .unit {
   font-size: 14px;

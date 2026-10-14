@@ -1,4 +1,4 @@
-import { CATEGORIES } from "/shared/categories.js";
+import { CATEGORIES, categoryName } from "/shared/categories.js";
 import { basketTotalOre, formatOre, parseKronorToOre } from "/shared/money.js";
 import { salesReportPdf } from "/shared/report-pdf.js";
 import { summarizeSales } from "/shared/sales.js";
@@ -73,9 +73,14 @@ function renderProducts() {
     const btn = document.createElement("button");
     btn.className = "product";
     btn.dataset.focus = `tile:${p.id}`;
+    // The category tints the tile, and is said too, so colour is not the only cue.
+    const category = categoryName(p.category);
+    if (category) btn.dataset.category = p.category;
     btn.setAttribute(
       "aria-label",
-      `${p.name}, ${formatOre(p.priceOre)} kr${qty ? `, ${qty} i korgen` : ""}`,
+      `${p.name}${category ? `, ${category}` : ""}, ${formatOre(p.priceOre)} kr${
+        qty ? `, ${qty} i korgen` : ""
+      }`,
     );
     btn.innerHTML =
       `<span>${escapeHtml(p.name)}</span><span class="price">${formatOre(
