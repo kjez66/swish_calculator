@@ -5,7 +5,8 @@
   // If Wrangler says this date is newer than its runtime, use the date it names.
   "compatibility_date": "2026-10-01",
   // public/ is served as-is; the Worker only runs for paths with no file.
-  "assets": { "directory": "./public" },
+  // The binding lets tests read public/ as served; the Worker itself never uses it.
+  "assets": { "directory": "./public", "binding": "ASSETS" },
   "durable_objects": {
     "bindings": [
       { "name": "KASSA", "class_name": "Kassa" },
