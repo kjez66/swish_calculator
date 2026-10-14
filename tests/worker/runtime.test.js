@@ -35,6 +35,19 @@ test("defaultProducts is the kiosk menu with fresh ids", () => {
     ["Kexchoklad", 15],
   ]);
   expect(a.every((p, i) => p.sortOrder === i && p.enabled === true)).toBe(true);
+  expect(a.map((p) => [p.name, p.category])).toEqual([
+    ["Loka", "dryck"],
+    ["Capri Sun", "dryck"],
+    ["Läsk Cola/Fanta", "dryck"],
+    ["Kaffe", "dryck"],
+    ["Hembakat", "fika"],
+    ["Delicatoboll", "fika"],
+    ["Korv med bröd", "mat"],
+    ["Wasa Knäcke", "mat"],
+    ["Corny", "godis"],
+    ["Chips", "godis"],
+    ["Kexchoklad", "godis"],
+  ]);
   const ids = new Set([...a, ...defaultProducts()].map((p) => p.id));
   expect(ids.size).toBe(22);
 });
