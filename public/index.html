@@ -15,6 +15,12 @@
     <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0e0f12" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" href="/style.css">
+    <!-- app.js's imports, fetched alongside it instead of after it
+         (tests/pages.test.js keeps this list complete). -->
+    <link rel="modulepreload" href="/shared/categories.js">
+    <link rel="modulepreload" href="/shared/money.js">
+    <link rel="modulepreload" href="/shared/report-pdf.js">
+    <link rel="modulepreload" href="/shared/sales.js">
   </head>
   <body>
     <header>
