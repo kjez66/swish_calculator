@@ -74,11 +74,13 @@ function renderProducts() {
     btn.className = "product";
     btn.dataset.focus = `tile:${p.id}`;
     // The category tints the tile, and is said too, so colour is not the only cue.
+    // It comes after the name and price, so the label starts with what the tile
+    // shows and voice control finds it by saying that (WCAG 2.5.3).
     const category = categoryName(p.category);
     if (category) btn.dataset.category = p.category;
     btn.setAttribute(
       "aria-label",
-      `${p.name}${category ? `, ${category}` : ""}, ${formatOre(p.priceOre)} kr${
+      `${p.name}, ${formatOre(p.priceOre)} kr${category ? `, ${category}` : ""}${
         qty ? `, ${qty} i korgen` : ""
       }`,
     );
