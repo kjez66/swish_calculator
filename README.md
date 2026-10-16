@@ -1,211 +1,161 @@
 # Swish-kassa
 
-A two-device point-of-sale for a market stall or a club kiosk. The operator taps products
-into a basket on their phone; an old spare phone facing the customer shows a Swish QR code
-for the exact total. The customer scans it, and their Swish app opens with the payee, the
-amount and a note (`<store name> #<order number>`) already filled in.
+A simple till for a kiosk, a market stall or a club café, using two phones and Swish.
 
-**Live:** https://swish-kassa.kjez.workers.dev (operator) and
-https://swish-kassa.kjez.workers.dev/display (customer display), on Cloudflare's free
-plan.
+You tap what the customer buys on your own phone. A second phone faces the customer
+and shows a Swish QR code for the exact amount. The customer scans it, and their Swish
+app opens with your number, the amount and a note already filled in. No card reader,
+no subscription, no app to install from a store.
 
-Design: `docs/superpowers/specs/2026-09-13-swish-calculator-design.md` (the app), with
-`docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md` (hosting and live
-updates, which replace that document's Deno sections).
+<p align="center">
+  <img src="docs/images/till.png" width="260" alt="The till on the seller's phone: product buttons in a grid, two coffees, a hot dog and a home-baked item in the basket, 75 kr in total, and a big Ta betalt button">
+  &nbsp;&nbsp;
+  <img src="docs/images/display-pay.png" width="260" alt="The customer's screen: the stall's name, 75,00 kr, a large QR code and the Swish logo, with the text Öppna Swish-appen och skanna QR-koden">
+</p>
+<p align="center"><sub>Left: your phone, the till. Right: the customer's screen. (Test data.)</sub></p>
 
-## Features
+The screens are in Swedish, since Swish is Swedish.
 
-- **Products** with name and price, in an order you choose. Each product has an **Aktiv**
-  switch: switched off, it disappears from the till but keeps its name, price and place,
-  for when something runs out.
-- **Categories.** Each product can be Dryck, Mat, Fika, Godis or Övrigt, chosen in the
-  product settings. The till tints a product's tile in its category's colour; a
-  product with no category keeps a plain tile. The default menu comes with categories.
-- **Default menu.** A new kassa starts with the HK Halmstad P13 kiosk menu (Loka, Capri
-  Sun, Läsk, Kaffe, Hembakat, Delicatoboll, Korv med bröd, Wasa Knäcke, Corny, Chips,
-  Kexchoklad), so it can sell right away. Change the list in `DEFAULT_PRODUCTS` in
-  `src/defaults.js`. It only applies to kassor created afterwards.
-- **Basket and running total**, with + and − per line, and a trash button that empties
-  the whole basket (after asking) when a customer changes their mind.
-- **Swish QR** on the paired customer display, and on the operator phone as a fallback
-  when no display is paired.
-- **Sales log** (the chart button in the header): per day, the number of sales, the
-  total, the quantity and sum per product, and every sale with its time and contents.
-  A sale is saved when the operator presses **Klar**. **Avbryt** saves nothing. A sale
-  saved by mistake can be removed. **Sales are kept for 31 days**, then deleted
-  automatically. The date list offers only the days with sales, newest first.
-  **Ladda ner PDF** saves the day's totals and per-product table as a one-page A4
-  report to hand in. Product names print in Helvetica, so a character it lacks (an
-  emoji, say) prints as "?".
-- **Installable as apps:** the till ("Kassa") and the customer display ("Display",
-  fullscreen) each install on a phone's home screen with their own icon. See
-  [Installing on the phones](#installing-on-the-phones).
+## What you need
 
-## Installing on the phones
+- **Two phones.** One for you and one for the customer. The customer's phone can be an
+  old one lying in a drawer: it only needs a web browser and Wi-Fi or mobile data.
+- **A Swish number** that can receive payments.
+- **A free [GitHub](https://github.com/signup) account** and **a free
+  [Cloudflare](https://dash.cloudflare.com/sign-up) account.** The till runs on
+  Cloudflare, and GitHub keeps your copy of it. You don't need to know anything about
+  either: you only click through the steps below once.
 
-- **Android (Chrome):** open the page, then the menu (⋮) → **Installera app** (or accept
-  the prompt). The app shares the browser's storage, so a kassa or pairing made in Chrome
-  carries over.
-- **iPhone (Safari):** open the page, then Dela (□↑) → **Lägg till på hemskärmen**.
-  **An iPhone home-screen app has its own storage, separate from Safari.** So install
-  first and set up inside the app:
-  - Operator: the installed app starts a new kassa. A kassa made in Safari stays there
-    with its sales log, and is not lost, but the app cannot see it.
-  - Display: the app opens on "Koppla displayn"; type the 6-digit code shown in the
-    kassa and press Koppla. Scanning the pairing QR opens Safari, not the app.
+It costs nothing to run. Cloudflare's free plan is far more than a kiosk needs.
 
-The app always loads the latest version when online (see `public/sw.js`), so a new
-deploy reaches the phones at once; offline it only keeps the pages, never the data.
+## Step 1: Get your own till
 
-## Using it
+Click this button:
 
-1. **Settings** (the gear): store name (shown in the Swish note), Swish number, and the
-   products. ↑ ↓ change the order, ✕ removes a product, **Aktiv** shows or hides it in the
-   till. A price takes digits and one decimal comma, e.g. `19,90`.
-2. **Selling:** tap products into the basket, press **Ta betalt**. The QR appears on the
-   customer display.
-3. **Check your own Swish app** that the money arrived, then press **Klar**. The display
-   thanks the customer and the sale goes into the sales log. **Avbryt** closes the charge
-   and keeps the basket, for "wait, add a bun".
-4. **After the match:** open the sales log and compare the total with your Swish app.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kjez66/swish_calculator)
 
-## Run locally
+1. Log in to Cloudflare (or create the account) when asked.
+2. Connect your GitHub account when asked. Cloudflare puts your own copy of the till in
+   it.
+3. Leave the suggested names as they are and click **Create and deploy**.
+4. Wait a couple of minutes. When it's done, Cloudflare shows your till's address. It
+   looks like `https://swish-kassa.your-name.workers.dev`. **Write it down.** This is
+   your till.
+
+Your till is yours alone: it runs in your Cloudflare account, and your sales are stored
+there, not with anyone else. If other people open your address, they each get a
+separate till of their own and can't see yours.
+
+## Step 2: Set up your phone (the till)
+
+1. Open your till's address on your phone.
+2. **Add it to your home screen**, so it opens like an app:
+   - **Android (Chrome):** the menu (⋮) → **Installera app** (or **Lägg till på
+     startskärmen**).
+   - **iPhone (Safari):** the Share button (□↑) → **Lägg till på hemskärmen**. Then open
+     the till from the new icon and do the rest of the setup there. On an iPhone, the
+     home-screen app and Safari don't share anything, so a till set up in Safari is not
+     in the app.
+3. Tap the gear (⚙) to open the settings:
+   - **Butiksnamn:** your stall's name. It is shown to the customer and goes into the
+     note of every payment.
+   - **Swish-nummer:** the number the money goes to.
+   - **Produkter:** your products and prices. A new till comes with an example menu;
+     change it, remove what you don't sell, and add your own. **Aktiv** hides a product
+     from the till without deleting it, for when something runs out.
+4. Press **Spara**.
+
+## Step 3: Set up the customer's phone (the display)
+
+1. On your phone, tap **Ingen display** at the top of the till. A QR code and a 6-digit
+   code appear.
+2. On the customer's phone, scan that QR code with the camera. The display opens and
+   connects to your till by itself. (Or open your till's address followed by `/display`,
+   for example `https://swish-kassa.your-name.workers.dev/display`, and type the code.)
+3. Your phone now says **Display ansluten**. You only do this once.
+4. If you like, add the display to the home screen too, the same way as the till, so it
+   opens fullscreen. On an iPhone, do this before connecting, and type the code in the
+   app.
+5. On the customer's phone, **turn the brightness up to maximum, turn off automatic
+   brightness, and set the screen to never turn off.** A dim screen outdoors is the
+   most common reason a QR code won't scan.
+
+<p align="center">
+  <img src="docs/images/display-welcome.png" width="220" alt="The customer's screen while waiting: the stall's name, Välkommen, and Betala med Swish">
+</p>
+<p align="center"><sub>Between customers, the display shows your stall's name and "Betala med Swish".</sub></p>
+
+## Selling
+
+1. Tap the products the customer wants. Tap again for more of the same. The total is at
+   the bottom; tap the number of items to see the list and change it.
+2. Press **Ta betalt**. The QR code appears on the customer's screen.
+3. The customer scans it with their Swish app and pays.
+4. **Check in your own Swish app that the money has arrived.** Then press **Klar**. The
+   customer's screen says thank you, and the sale is saved.
+
+**Avbryt** closes the payment without saving anything and keeps the basket, for "wait,
+I'll have a bun too". The trash can empties the whole basket.
+
+## After the day
+
+The chart button (📊) shows the sales log for each day: how many sales, the total,
+how much of each product, and every sale with its time. **Ladda ner PDF** saves a
+one-page report to hand in. Compare the total with your Swish app.
+
+Sales are kept for 31 days, then deleted automatically.
+
+## Good to know
+
+- **The till cannot see whether a customer has paid.** Swish doesn't tell it. "Klar"
+  means *you* saw the money arrive in your own Swish app. Always check before you press
+  it.
+- **Do a test purchase before your first real sale.** Make a small sale, scan the code
+  with your own Swish app, and check that the number, the amount and the note are right.
+  You can stop in the Swish app without paying.
+- **Your till lives in your phone's browser.** There is no login. If you clear the
+  browser's data or change phones, your phone forgets the till and starts over with a new,
+  empty one, and the old sales log can't be brought back. An iPhone can also forget it if
+  you don't open it for a week. Adding the till to your home screen makes this much less
+  likely. If it happens, enter your settings again and connect the display again
+  (Step 3).
+- **Which Swish number?** The till accepts both a private Swish number (starting with
+  07) and a Swish number for businesses and associations (starting with 123). Check that
+  your Swish agreement allows the kind of selling you do.
+- **New versions:** your copy doesn't change when this project changes, so nothing
+  changes under you in the middle of a sale.
+
+## For developers
 
 Requires Node.js 22 or later.
 
 ```bash
 npm install
-npm run dev       # http://localhost:8787, the real Workers runtime
+npm run dev       # http://localhost:8787 in the real Workers runtime
 npm test          # every test, inside the Workers runtime
 npm run check     # lint and formatting (Biome); npm run format fixes formatting
+npm run deploy    # deploy to your Cloudflare account (run npx wrangler login first)
 ```
 
-`package.json` already allows `workerd`'s install script (npm 11 blocks install
-scripts by default). After upgrading Wrangler, allow the new version with
-`npm approve-scripts workerd`.
-
-`npm run dev` listens on all interfaces, so phones on the same Wi-Fi can open
-`http://<this computer's IP>:8787/`. Local data lives in `.wrangler/state/`;
-deleting that folder deletes every local kassa.
-
-**On Windows PowerShell**, `npm` and `npx` may be blocked ("running scripts is disabled
-on this system"). Use `npm.cmd` and `npx.cmd` instead, e.g. `npm.cmd run dev`; they do
-the same without changing the execution policy.
-
-## Hosting on Cloudflare (free)
-
-Runs on the Workers Free plan: a Worker plus SQLite-backed Durable Objects, one
-per kassa. Design and limits: `docs/superpowers/specs/2026-10-11-cloudflare-workers-design.md`.
-
-Run these in an ordinary terminal window: logging in waits for you in the browser and
-the first deploy asks questions, so they cannot run from a non-interactive shell.
-
-1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com).
-2. `npx wrangler login`: the browser opens Cloudflare; click **Allow**. You stay logged
-   in on this computer.
-3. `npm run deploy`. The first deploy asks you to register a `workers.dev` subdomain
-   (this account's is `kjez`). The kassa is then at
-   `https://swish-kassa.<subdomain>.workers.dev`.
-4. Optional: a custom domain under the Worker's *Settings → Domains & Routes* in
-   the Cloudflare dashboard.
-5. Run the checks in [Before taking real money](#️-before-taking-real-money).
-
-**After a change:** run the tests, then `npm run deploy` (`npm.cmd run deploy` in
-PowerShell). Installed apps pick up the new version the next time they load.
-
-Free-plan headroom for one kassa: 100,000 requests a day. A device left connected all
-day sends a heartbeat every 15 s (about 5,800 a day), and the Durable Object sleeps
-between events, so it uses almost none of its daily duration. Usage is under *Workers &
-Pages → swish-kassa → Metrics* in the dashboard.
-
-## Self-hosting
-
-The same code runs on Cloudflare's open-source runtime, `workerd`, so the app is
-not tied to Cloudflare's hosting. That setup is not documented here yet.
-
-## ⚠️ Before taking real money
-
-**The QR payload format is community-documented, not published by Getswish.** The test
-suite proves the app emits the string it intended to emit. It cannot prove Swish accepts
-it. Scan a generated code with a real Swish app and confirm every row below before your
-first real sale.
-
-- [ ] The Swish app opens with the **correct payee**
-- [ ] The **amount** is correct
-- [ ] The **note** reads `<store name> #<order number>`
-- [ ] Payee, amount and note are all **locked** against editing
-- [ ] Payee is accepted in `07…` form (if not, switch `normalizePayee` to emit `46…`)
-- [ ] A whole amount is accepted as `249.00` (if not, emit `249`)
-- [ ] A 50-character note is accepted (if not, lower `MESSAGE_MAX_CHARS` in
-      `public/shared/swish.js`)
-
-Also confirm once after the first deploy, with the two devices on different networks: make
-a charge, then kill and restore the display's connection mid-charge and check that the QR
-comes back on its own.
-
-## Where your kassa lives
-
-The kassa (its settings, products, sales log and display pairing) lives on the server,
-but the key to it is stored only in the **operator phone's browser storage**, and there is
-no login to get it back. If that storage is lost (a new phone, cleared browser data, or
-iOS deleting a site's data after 7 days without a visit), the kassa is lost with it and
-**cannot be recovered**, sales log included. The operator page then starts a fresh kassa
-with the default products.
-
-- **Install the operator page as an app** ([how](#installing-on-the-phones)). It is
-  harder to clear by accident, and on iOS it makes the 7-day storage eviction much less
-  likely.
-- **After a lost kassa, re-pair the display.** Enter the store name and Swish number
-  again, then tap the status button in the operator's header and scan the pairing QR with
-  the display phone's camera. That replaces the old pairing by itself. If the camera
-  cannot open the QR, open `/display.html?pair` on the display phone instead and type the
-  code.
-
-## Setting up the display phone
-
-1. On the operator phone, tap the status button in the header ("Ingen display"). Scan the
-   pairing QR it shows with the display phone's camera: the display page opens and pairs
-   itself. (Or open `/display.html` and type the 6-digit code shown under the QR.) You
-   only do this once. If the display then asks for one tap, give it: that tap is what lets
-   the browser keep the screen on.
-2. Install it as the "Display" app so it opens fullscreen
-   ([how](#installing-on-the-phones)). On an iPhone, install first and pair inside the
-   app by typing the code.
-3. **Set the screen timeout to Never** and **turn off auto-brightness, with brightness at
-   maximum.** The page requests a wake lock where the browser supports one, but older
-   Safari has no such API, and no web page can set screen brightness at all. A dim screen
-   outdoors is the most common reason a QR will not scan.
-
-## What this app does not do
-
-It cannot tell whether a payment arrived. Swish provides no callback for a private payee
-number. **"Klar" means you saw the money land in your own Swish app** — it is never a
-confirmation from the system. The sales log therefore lists what was marked as paid, not
-what Swish confirmed: reconcile it against your Swish app.
-
-A private Swish number is what this is built for, per the design. Swish's own terms
-reserve commercial use for a merchant number (`123…`); the app accepts either, so
-switching later is a settings change.
-
-## Project layout
+It is plain HTML, CSS and JavaScript with no build step. A Cloudflare Worker routes
+`/api/*` to Durable Objects: one per till (settings, products, sales, and the live
+WebSocket connection to the display) and one shared directory for pairing codes and
+rate limits. The customer display (`public/display.js`) is kept in ES5 so it runs on
+old phones; a test enforces that.
 
 | Path | What |
 |---|---|
-| `wrangler.jsonc` | Cloudflare config: entry, static files, Durable Objects |
-| `src/worker.js` | Entry: routes `/api/*` to the Durable Objects |
-| `src/kassa.js` | One kassa: settings, products, charges, sales log, live WebSockets |
-| `src/directory.js` | Pair codes and rate limits, shared by all kassor |
-| `src/defaults.js` | `DEFAULT_PRODUCTS`, the menu a new kassa starts with |
-| `src/qr.js`, `src/render.js` | Swish payload → QR code SVG |
-| `public/index.html`, `app.js`, `style.css` | The operator page |
-| `public/display.html`, `display.js`, `display.css` | The customer display (ES5, for old phones) |
-| `public/_headers` | Security headers (CSP and others) for every page and file; the API's are in `src/http.js` |
-| `public/shared/` | Money, Swish payload, sales summary and PDF report code; the server shares money and Swish code |
-| `public/*.webmanifest`, `sw.js`, `icons/` | Installing as apps (`icons/*.svg` are the sources of the PNGs) |
-| `tests/worker/` | Server tests: `npm test` |
-| `tests/*.test.js` | Shared code, pages, PWA files, security headers and display.js staying ES5: `npm test` |
-| `biome.jsonc` | Lint and format settings: `npm run check` |
-| `docs/superpowers/` | Design documents and implementation plans |
+| `public/` | The two pages, served as static files: `index.html` and `app.js` (the till), `display.html` and `display.js` (the customer display) |
+| `public/shared/` | Money, Swish QR payload, sales summary and PDF report code, shared with the server |
+| `public/_headers` | Security headers for the static files |
+| `src/` | The Worker and the Durable Objects |
+| `src/defaults.js` | The example menu a new till starts with |
+| `tests/` | Tests, run with `npm test` |
+| `wrangler.jsonc` | Cloudflare configuration |
+
+The QR payload format is community-documented, not published by Getswish. The tests
+prove the app produces the string it intends to, but not that Swish accepts it; the test
+purchase above is what proves that.
 
 ## License
 
