@@ -2,12 +2,13 @@
 
 [Svenska](README.md) · **English**
 
-A simple till for a kiosk, a market stall or a club café, using two phones and Swish.
+A simple till for a kiosk, a market stall or a club café, using your phone and Swish.
 
-You tap what the customer buys on your own phone. A second phone faces the customer
-and shows a Swish QR code for the exact amount. The customer scans it, and their Swish
-app opens with your number, the amount and a note already filled in. No card reader,
-no subscription, no app to install from a store.
+You tap what the customer buys on your own phone, and it makes a Swish QR code for the
+exact amount. The customer scans it, and their Swish app opens with your number, the
+amount and a note already filled in. If you have a second phone, it can face the
+customer and show the QR code for you. No card reader, no subscription, no app to
+install from a store.
 
 <p align="center">
   <img src="docs/images/till.png" width="260" alt="The till on the seller's phone: product buttons in a grid, two coffees, a hot dog and a home-baked item in the basket, 75 kr in total, and a big Ta betalt button">
@@ -20,8 +21,14 @@ The screens are in Swedish, since Swish is Swedish.
 
 ## What you need
 
-- **Two phones.** One for you and one for the customer. The customer's phone can be an
-  old one lying in a drawer: it only needs a web browser and Wi-Fi or mobile data.
+- **A phone, tablet or laptop for you.** This is the till. Anything with a modern web
+  browser works.
+- **A second device for the customer, if you like (not required).** It shows the QR
+  code facing the customer, so you don't have to turn your own screen around. It can be
+  an old phone lying in a drawer, or a tablet or laptop. Without it, the QR code shows
+  on your own screen instead.
+- **Internet on every device you use**, through Wi-Fi or mobile data. This is required:
+  the till does not work offline.
 - **A Swish number** that can receive payments.
 - **A free [GitHub](https://github.com/signup) account** and **a free
   [Cloudflare](https://dash.cloudflare.com/sign-up) account.** The till runs on
@@ -50,6 +57,9 @@ separate till of their own and can't see yours.
 
 ## Step 2: Set up your phone (the till)
 
+These steps say "phone", but a tablet works the same way. On a laptop, open the address
+in the browser and bookmark it.
+
 1. Open your till's address on your phone.
 2. **Add it to your home screen**, so it opens like an app:
    - **Android (Chrome):** the menu (⋮) → **Installera app** (or **Lägg till på
@@ -67,7 +77,10 @@ separate till of their own and can't see yours.
      from the till without deleting it, for when something runs out.
 4. Press **Spara**.
 
-## Step 3: Set up the customer's phone (the display)
+## Step 3: Set up the customer's phone (the display, optional)
+
+No second device? Skip this step. When you press **Ta betalt**, the QR code appears on
+your own screen, and you turn it towards the customer.
 
 1. On your phone, tap **Ingen display** at the top of the till. A QR code and a 6-digit
    code appear.
@@ -91,7 +104,8 @@ separate till of their own and can't see yours.
 
 1. Tap the products the customer wants. Tap again for more of the same. The total is at
    the bottom; tap the number of items to see the list and change it.
-2. Press **Ta betalt**. The QR code appears on the customer's screen.
+2. Press **Ta betalt**. The QR code appears on your screen, and on the customer's
+   screen if you have one.
 3. The customer scans it with their Swish app and pays.
 4. **Check in your own Swish app that the money has arrived.** Then press **Klar**. The
    customer's screen says thank you, and the sale is saved.

@@ -2,13 +2,13 @@
 
 **Svenska** · [English](README.en.md)
 
-En enkel kassa för kiosken, marknadsståndet eller föreningscaféet, med två mobiler och
+En enkel kassa för kiosken, marknadsståndet eller föreningscaféet, med din mobil och
 Swish.
 
-Du trycker in det kunden köper på din egen mobil. En andra mobil står vänd mot kunden
-och visar en Swish-QR-kod med exakt belopp. Kunden skannar koden, och Swish-appen
-öppnas med ditt nummer, beloppet och ett meddelande redan ifyllda. Ingen kortläsare,
-inget abonnemang och ingen app att ladda ner.
+Du trycker in det kunden köper på din egen mobil, och den gör en Swish-QR-kod med
+exakt belopp. Kunden skannar koden, och Swish-appen öppnas med ditt nummer, beloppet
+och ett meddelande redan ifyllda. Har du en andra mobil kan den stå vänd mot kunden och
+visa QR-koden åt dig. Ingen kortläsare, inget abonnemang och ingen app att ladda ner.
 
 <p align="center">
   <img src="docs/images/till.png" width="260" alt="Kassan på säljarens mobil: varuknappar i ett rutnät, två kaffe, en korv med bröd och ett hembakat i varukorgen, 75 kr totalt och en stor knapp Ta betalt">
@@ -19,8 +19,14 @@ inget abonnemang och ingen app att ladda ner.
 
 ## Det här behöver du
 
-- **Två mobiler.** En till dig och en till kunden. Kundens mobil kan vara en gammal som
-  ligger i en låda: den behöver bara en webbläsare och wifi eller mobildata.
+- **En mobil, surfplatta eller dator till dig.** Det är kassan. Allt med en modern
+  webbläsare fungerar.
+- **En andra enhet till kunden, om du vill (behövs inte).** Den visar QR-koden vänd mot
+  kunden, så att du slipper vända på din egen skärm. Den kan vara en gammal mobil som
+  ligger i en låda, eller en surfplatta eller dator. Utan den visas QR-koden på din
+  egen skärm i stället.
+- **Internet på alla enheter du använder**, via wifi eller mobildata. Det här behövs:
+  kassan fungerar inte utan uppkoppling.
 - **Ett Swish-nummer** som kan ta emot betalningar.
 - **Ett gratis konto på [GitHub](https://github.com/signup)** och **ett gratis konto på
   [Cloudflare](https://dash.cloudflare.com/sign-up).** Kassan körs hos Cloudflare, och
@@ -50,6 +56,9 @@ se din.
 
 ## Steg 2: Ställ in din mobil (kassan)
 
+Stegen säger ”mobil”, men en surfplatta fungerar på samma sätt. På en dator öppnar du
+adressen i webbläsaren och sparar den som bokmärke.
+
 1. Öppna kassans adress på din mobil.
 2. **Lägg den på hemskärmen**, så att den öppnas som en app:
    - **Android (Chrome):** menyn (⋮) → **Installera app** (eller **Lägg till på
@@ -67,7 +76,10 @@ se din.
      utan att ta bort den, för när något tar slut.
 4. Tryck på **Spara**.
 
-## Steg 3: Ställ in kundens mobil (displayen)
+## Steg 3: Ställ in kundens mobil (displayen, valfritt)
+
+Ingen andra enhet? Hoppa över det här steget. När du trycker på **Ta betalt** visas
+QR-koden på din egen skärm, och du vänder den mot kunden.
 
 1. Tryck på **Ingen display** högst upp i kassan på din mobil. En QR-kod och en
    sexsiffrig kod visas.
@@ -91,7 +103,8 @@ se din.
 
 1. Tryck på varorna som kunden vill ha. Tryck igen för fler av samma. Summan står
    längst ner; tryck på antalet varor för att se listan och ändra i den.
-2. Tryck på **Ta betalt**. QR-koden visas på kundens skärm.
+2. Tryck på **Ta betalt**. QR-koden visas på din skärm, och på kundens skärm om du
+   har en.
 3. Kunden skannar den med Swish-appen och betalar.
 4. **Kontrollera i din egen Swish-app att pengarna har kommit in.** Tryck sedan på
    **Klar**. Kundens skärm tackar, och köpet sparas.
