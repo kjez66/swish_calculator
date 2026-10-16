@@ -19,6 +19,9 @@ for (const path of FILES) {
     expect(headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
     const csp = headers.get("Content-Security-Policy") ?? "";
     expect(csp).toContain("default-src 'self'");
+    // Any wss:// host, not just this one: old Safari does not count wss:// as
+    // 'self', and a copy deployed elsewhere has a different hostname.
+    expect(csp).toContain("connect-src 'self' wss:;");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).not.toContain("unsafe");
