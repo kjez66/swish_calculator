@@ -198,10 +198,11 @@ switching later is a settings change.
 | `src/defaults.js` | `DEFAULT_PRODUCTS`, the menu a new kassa starts with |
 | `src/qr.js`, `src/render.js` | Swish payload → QR code SVG |
 | `public/index.html`, `app.js`, `style.css` | The operator page |
-| `public/display.html`, `display.js` | The customer display (ES5, for old phones) |
+| `public/display.html`, `display.js`, `display.css` | The customer display (ES5, for old phones) |
+| `public/_headers` | Security headers (CSP and others) for every page and file; the API's are in `src/http.js` |
 | `public/shared/` | Money, Swish payload, sales summary and PDF report code; the server shares money and Swish code |
 | `public/*.webmanifest`, `sw.js`, `icons/` | Installing as apps (`icons/*.svg` are the sources of the PNGs) |
 | `tests/worker/` | Server tests: `npm test` |
-| `tests/*.test.js` | Shared code, pages, PWA files and display.js staying ES5: `npm test` |
+| `tests/*.test.js` | Shared code, pages, PWA files, security headers and display.js staying ES5: `npm test` |
 | `biome.jsonc` | Lint and format settings: `npm run check` |
 | `docs/superpowers/` | Design documents and implementation plans |

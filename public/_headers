@@ -1,0 +1,16 @@
+# Security headers for every file in public/ (Workers Static Assets reads this
+# file and does not serve it). API responses get theirs in src/http.js.
+#
+# The CSP allows only this site's own files: no inline <script>, <style> or
+# style="" (tests/headers.test.js checks the pages). Old Safari does not count
+# wss:// as 'self', so the live connection's host is named in connect-src; a new
+# hostname for the site must be added there too, or the old display phone
+# loses its live updates.
+/*
+  Content-Security-Policy: default-src 'self'; connect-src 'self' wss://swish-kassa.kjez.workers.dev; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), screen-wake-lock=(self), fullscreen=(self)
+  Cross-Origin-Opener-Policy: same-origin
