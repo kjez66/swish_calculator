@@ -2,7 +2,9 @@
   "name": "swish-kassa",
   "private": true,
   "license": "MIT",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --ip 0.0.0.0",
