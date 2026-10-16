@@ -1,9 +1,17 @@
-# Swish-kassa
+# Swish-kalkylator
 
 **Svenska** · [English](README.en.md)
 
-En enkel kassa för kiosken, marknadsståndet eller föreningscaféet, med din mobil och
-Swish.
+Ett enkelt verktyg för att ta betalt med Swish i föreningens kiosk, på marknaden eller i
+caféet, med din mobil.
+
+> **Obs! Det här är inget certifierat kassaregister.** Swish-kalkylatorn är ett enkelt
+> hjälpmedel för små föreningar och liknande, till exempel lagets kiosk eller klassens
+> fikaförsäljning. Den har ingen kontrollenhet och uppfyller inte Skatteverkets krav på
+> kassaregister. Måste din verksamhet ha ett kassaregister, vilket kan gälla även när
+> kunderna betalar med Swish, så ersätter den inte ett sådant. Är du osäker, läs
+> [Skatteverkets regler om kassaregister](https://www.skatteverket.se/foretag/drivaforetag/kassaregister.4.121b82f011a74172e5880005263.html).
+> Verktyget kommer utan garantier, se [licensen](LICENSE).
 
 Du trycker in det kunden köper på din egen mobil, och den gör en Swish-QR-kod med
 exakt belopp. Kunden skannar koden, och Swish-appen öppnas med ditt nummer, beloppet

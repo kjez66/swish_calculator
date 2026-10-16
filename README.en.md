@@ -1,8 +1,18 @@
-# Swish-kassa
+# Swish Calculator
 
 [Svenska](README.md) · **English**
 
-A simple till for a kiosk, a market stall or a club café, using your phone and Swish.
+A simple tool for taking Swish payments at a club kiosk, a market stall or a café, using
+your phone.
+
+> **Note: this is not a certified cash register.** Swish Calculator is a simple aid for
+> small associations (föreningar) and the like, such as a sports team's kiosk or a school
+> class's bake sale. It has no control unit and does not meet the Swedish Tax Agency's
+> requirements for cash registers. If your business must have a cash register, which can
+> apply even when customers pay with Swish, this does not replace one. If you are
+> unsure, read
+> [Skatteverket's rules on cash registers](https://www.skatteverket.se/foretag/drivaforetag/kassaregister.4.121b82f011a74172e5880005263.html)
+> (in Swedish). It comes without warranty; see the [license](LICENSE).
 
 You tap what the customer buys on your own phone, and it makes a Swish QR code for the
 exact amount. The customer scans it, and their Swish app opens with your number, the
