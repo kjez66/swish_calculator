@@ -206,3 +206,9 @@ switching later is a settings change.
 | `tests/*.test.js` | Shared code, pages, PWA files, security headers and display.js staying ES5: `npm test` |
 | `biome.jsonc` | Lint and format settings: `npm run check` |
 | `docs/superpowers/` | Design documents and implementation plans |
+
+## License
+
+MIT, see [`LICENSE`](LICENSE). The Swish name and logo belong to Getswish AB and are
+not covered by it; the Lucide icons keep their own licence. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
