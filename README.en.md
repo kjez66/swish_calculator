@@ -13,7 +13,7 @@ install from a store.
 <p align="center">
   <img src="docs/images/till.png" width="260" alt="The till on the seller's phone: product buttons in a grid, two coffees, a hot dog and a home-baked item in the basket, 75 kr in total, and a big Ta betalt button">
   &nbsp;&nbsp;
-  <img src="docs/images/display-pay.png" width="260" alt="The customer's screen: the stall's name, 75,00 kr, a large QR code and the Swish logo, with the text Öppna Swish-appen och skanna QR-koden">
+  <img src="docs/images/display-pay.png" width="260" alt="The customer's screen: the store name, 75,00 kr, a large QR code and the Swish logo, with the text Öppna Swish-appen och skanna QR-koden">
 </p>
 <p align="center"><sub>Left: your phone, the till. Right: the customer's screen. (Test data.)</sub></p>
 
@@ -69,8 +69,8 @@ in the browser and bookmark it.
      home-screen app and Safari don't share anything, so a till set up in Safari is not
      in the app.
 3. Tap the gear (⚙) to open the settings:
-   - **Butiksnamn:** your stall's name. It is shown to the customer and goes into the
-     note of every payment.
+   - **Butiksnamn:** the name of your kiosk, café or club. It is shown to the customer
+     and goes into the note of every payment.
    - **Swish-nummer:** the number the money goes to.
    - **Produkter:** your products and prices. A new till comes with an example menu;
      change it, remove what you don't sell, and add your own. **Aktiv** hides a product
@@ -96,9 +96,9 @@ your own screen, and you turn it towards the customer.
    most common reason a QR code won't scan.
 
 <p align="center">
-  <img src="docs/images/display-welcome.png" width="220" alt="The customer's screen while waiting: the stall's name, Välkommen, and Betala med Swish">
+  <img src="docs/images/display-welcome.png" width="220" alt="The customer's screen while waiting: the store name, Välkommen, and Betala med Swish">
 </p>
-<p align="center"><sub>Between customers, the display shows your stall's name and "Betala med Swish".</sub></p>
+<p align="center"><sub>Between customers, the display shows your store name and "Betala med Swish".</sub></p>
 
 ## Selling
 

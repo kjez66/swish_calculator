@@ -13,7 +13,7 @@ visa QR-koden åt dig. Ingen kortläsare, inget abonnemang och ingen app att lad
 <p align="center">
   <img src="docs/images/till.png" width="260" alt="Kassan på säljarens mobil: varuknappar i ett rutnät, två kaffe, en korv med bröd och ett hembakat i varukorgen, 75 kr totalt och en stor knapp Ta betalt">
   &nbsp;&nbsp;
-  <img src="docs/images/display-pay.png" width="260" alt="Kundens skärm: ståndets namn, 75,00 kr, en stor QR-kod och Swish-logotypen, med texten Öppna Swish-appen och skanna QR-koden">
+  <img src="docs/images/display-pay.png" width="260" alt="Kundens skärm: butiksnamnet, 75,00 kr, en stor QR-kod och Swish-logotypen, med texten Öppna Swish-appen och skanna QR-koden">
 </p>
 <p align="center"><sub>Till vänster: din mobil, kassan. Till höger: kundens skärm. (Testdata.)</sub></p>
 
@@ -68,8 +68,8 @@ adressen i webbläsaren och sparar den som bokmärke.
      delar appen på hemskärmen ingenting med Safari, så en kassa som du har ställt in i
      Safari finns inte i appen.
 3. Tryck på kugghjulet (⚙) för att öppna inställningarna:
-   - **Butiksnamn:** ståndets namn. Det visas för kunden och står i meddelandet på
-     varje betalning.
+   - **Butiksnamn:** namnet på er kiosk, ert café eller er förening. Det visas för
+     kunden och står i meddelandet på varje betalning.
    - **Swish-nummer:** numret som pengarna ska till.
    - **Produkter:** dina varor och priser. En ny kassa har en exempelmeny; ändra den, ta
      bort det du inte säljer och lägg till dina egna. **Aktiv** döljer en vara i kassan
@@ -95,9 +95,9 @@ QR-koden på din egen skärm, och du vänder den mot kunden.
    vanligaste anledningen till att en QR-kod inte går att skanna.
 
 <p align="center">
-  <img src="docs/images/display-welcome.png" width="220" alt="Kundens skärm medan den väntar: ståndets namn, Välkommen och Betala med Swish">
+  <img src="docs/images/display-welcome.png" width="220" alt="Kundens skärm medan den väntar: butiksnamnet, Välkommen och Betala med Swish">
 </p>
-<p align="center"><sub>Mellan kunderna visar displayen ståndets namn och ”Betala med Swish”.</sub></p>
+<p align="center"><sub>Mellan kunderna visar displayen butiksnamnet och ”Betala med Swish”.</sub></p>
 
 ## Sälja
 
