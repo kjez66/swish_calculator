@@ -171,7 +171,7 @@ function renderBasket() {
 // basket line disappears (quantity 0), fall back to that product's tile.
 function renderAll() {
   const focused = document.activeElement?.dataset?.focus;
-  $("storeName").textContent = settings?.storeName || "Swish-kassa";
+  $("storeName").textContent = settings?.storeName || "Swish-kalkylator";
   renderProducts();
   const result = renderBasket();
   if (focused) {

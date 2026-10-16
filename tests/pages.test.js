@@ -13,6 +13,16 @@ test("the operator page preloads every module app.js imports", async () => {
   }
 });
 
+// The tool's name, wherever the till shows it before a store name is set.
+test("the till is called Swish-kalkylator everywhere it shows its name", async () => {
+  const NAME = "Swish-kalkylator";
+  const html = await assetText("/");
+  expect(html).toContain(`<title>${NAME}</title>`);
+  expect(html).toContain(`<h1 id="storeName">${NAME}</h1>`);
+  expect(await assetText("/app.js")).toContain(`settings?.storeName || "${NAME}"`);
+  expect(JSON.parse(await assetText("/manifest.webmanifest")).name).toBe(NAME);
+});
+
 test("the official Swish logo is shipped and shown on both pages", async () => {
   const logo = await assetText("/brand/swish-logo.svg");
   expect(logo.startsWith("<svg")).toBe(true);
