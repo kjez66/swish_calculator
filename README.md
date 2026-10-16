@@ -107,7 +107,7 @@ QR-koden på din egen skärm, och du vänder den mot kunden.
    har en.
 3. Kunden skannar den med Swish-appen och betalar.
 4. **Kontrollera i din egen Swish-app att pengarna har kommit in.** Tryck sedan på
-   **Klar**. Kundens skärm tackar, och köpet sparas.
+   **Klar**. Köpet sparas, och kundens skärm tackar, om du har en.
 
 **Avbryt** stänger betalningen utan att spara något och behåller varorna, för ”vänta,
 jag tar en bulle också”. Papperskorgen tömmer hela varukorgen.
@@ -125,7 +125,7 @@ Försäljningen sparas i 31 dagar och tas sedan bort automatiskt.
 - **Kassan kan inte se om kunden har betalat.** Swish berättar inte det för den.
   ”Klar” betyder att *du* har sett pengarna komma in i din egen Swish-app. Kontrollera
   alltid innan du trycker.
-- **Gör ett testköp före den första riktiga försäljningen.** Gör ett litet köp, skanna
+- **Gör ett testköp före den första riktiga försäljningen.** Slå in ett litet köp, skanna
   koden med din egen Swish-app och kontrollera att numret, beloppet och meddelandet
   stämmer. Du kan avbryta i Swish-appen utan att betala.
 - **Kassan bor i din mobils webbläsare.** Det finns ingen inloggning. Om du rensar
@@ -142,7 +142,7 @@ Försäljningen sparas i 31 dagar och tas sedan bort automatiskt.
 
 ## För utvecklare
 
-Kräver Node.js 22 eller senare.
+Kräver Node.js 24, nuvarande LTS (22 fungerar också).
 
 ```bash
 npm install

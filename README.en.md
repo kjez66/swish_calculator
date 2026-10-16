@@ -108,7 +108,7 @@ your own screen, and you turn it towards the customer.
    screen if you have one.
 3. The customer scans it with their Swish app and pays.
 4. **Check in your own Swish app that the money has arrived.** Then press **Klar**. The
-   customer's screen says thank you, and the sale is saved.
+   sale is saved, and the customer's screen, if you have one, says thank you.
 
 **Avbryt** closes the payment without saving anything and keeps the basket, for "wait,
 I'll have a bun too". The trash can empties the whole basket.
@@ -143,7 +143,7 @@ Sales are kept for 31 days, then deleted automatically.
 
 ## For developers
 
-Requires Node.js 22 or later.
+Requires Node.js 24, the current LTS (22 also works).
 
 ```bash
 npm install
