@@ -68,7 +68,7 @@ export class Kassa extends DurableObject {
     return { roomId, operatorToken };
   }
 
-  /** RPC from the Worker, after a valid pair claim: a new display token. */
+  /** RPC after a valid pair claim: a token and details for confirming a switch. */
   async addDisplay() {
     return await this.#serial(async () => {
       const room = await this.ctx.storage.get("room");
@@ -79,7 +79,12 @@ export class Kassa extends DurableObject {
         await hashToken(displayToken),
       ];
       await this.ctx.storage.put("room", room);
-      return displayToken;
+      const settings = await this.ctx.storage.get("settings");
+      return {
+        displayToken,
+        storeName: settings?.storeName ?? null,
+        payeeNumber: settings?.payeeNumber ?? null,
+      };
     });
   }
 
