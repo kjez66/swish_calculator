@@ -54,9 +54,9 @@ export default {
       }
       const body = await request.json().catch(() => null);
       const roomId = await directory.claimPairCode(String(body?.code ?? ""));
-      const displayToken = roomId && (await env.KASSA.getByName(roomId).addDisplay());
-      if (!displayToken) return fail("invalid_code", 404);
-      return json({ roomId, displayToken });
+      const display = roomId && (await env.KASSA.getByName(roomId).addDisplay());
+      if (!display) return fail("invalid_code", 404);
+      return json({ roomId, ...display });
     }
 
     if (!KASSA_ROUTES.has(path)) return fail("not_found", 404);

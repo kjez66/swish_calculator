@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { call, newRoom, pairDisplay } from "./helpers.js";
+import { call, configuredRoom, newRoom, pairDisplay } from "./helpers.js";
 
 test("pairing hands a display its own token, with a scannable link", async () => {
   const { roomId, operatorToken, api } = await newRoom();
@@ -13,9 +13,22 @@ test("pairing hands a display its own token, with a scannable link", async () =>
     })
   ).json();
   expect(claim.roomId).toBe(roomId);
+  expect(claim.storeName).toBe(null);
+  expect(claim.payeeNumber).toBe(null);
   // The live tests show this token opens a display socket.
   expect(claim.displayToken.length).toBeGreaterThan(40);
   expect(claim.displayToken).not.toBe(operatorToken);
+});
+
+test("a claim identifies the destination store and recipient before connecting", async () => {
+  const { roomId, api } = await configuredRoom();
+  const { code } = await (await api("POST", "/api/pair")).json();
+  const claim = await (await call("POST", "/api/pair/claim", { body: { code } })).json();
+  expect(claim).toMatchObject({
+    roomId,
+    storeName: "Kiosken",
+    payeeNumber: "0701234567",
+  });
 });
 
 test("a pair code cannot be claimed twice", async () => {

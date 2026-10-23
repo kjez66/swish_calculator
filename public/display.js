@@ -20,14 +20,12 @@
     }
   }
 
-  // /display.html?pair is the explicit re-pair path. /display.html?code=123456
-  // is what the operator's pairing QR opens: scanning it means "pair with this
-  // room", so any old pairing is dropped and the code is claimed at once below.
-  // Either way the query is removed, so a reload does not repeat it and the
-  // single-use code does not linger in the address bar.
+  // URL parameters propose a pairing; navigation alone must not discard the
+  // saved room. Remove the query so a reload keeps the existing pairing and
+  // the single-use code does not linger in the address bar.
   var urlCode = (/[?&]code=(\d{6})(?:&|$)/.exec(location.search) || [])[1] || null;
-  if (urlCode || /^\?pair(&|=|$)/.test(location.search)) {
-    forgetPairing();
+  var rePair = /^\?pair(&|=|$)/.test(location.search);
+  if (urlCode || rePair) {
     try {
       history.replaceState(null, "", location.pathname);
     } catch (_e) {
@@ -123,7 +121,15 @@
     claim(el("code").value.trim());
   });
 
+  function keepPairing() {
+    location.replace(location.pathname);
+  }
+  el("keepPairing").hidden = !creds;
+  el("keepPairing").addEventListener("click", keepPairing);
+
   function claim(code) {
+    if (el("claim").disabled) return;
+    el("claim").disabled = true;
     el("pairError").textContent = "";
     fetch("/api/pair/claim", {
       method: "POST",
@@ -135,9 +141,26 @@
         return res.json();
       })
       .then(function (data) {
-        creds = data;
+        // A valid code proves access to the proposed room, not permission to
+        // replace this display's saved pairing. No new stream before approval.
+        if (
+          creds &&
+          !window.confirm(
+            "Byta displayens koppling?\n\nKassa: " +
+              (data.storeName || "Namn saknas") +
+              "\nSwish-nummer: " +
+              (data.payeeNumber || "Inte inställt") +
+              "\nRum: " +
+              data.roomId +
+              "\n\nByt bara om du känner igen kassan och Swish-numret."
+          )
+        ) {
+          keepPairing();
+          return;
+        }
+        creds = { roomId: data.roomId, displayToken: data.displayToken };
         try {
-          localStorage.setItem(LS, JSON.stringify(data));
+          localStorage.setItem(LS, JSON.stringify(creds));
         } catch (_e) {
           /* storage unavailable: pairing just will not persist */
         }
@@ -145,6 +168,7 @@
         connect();
       })
       .catch(function (err) {
+        el("claim").disabled = false;
         show("pair");
         el("pairError").textContent =
           err.message === "429"
@@ -283,6 +307,8 @@
     show("pair");
     requestWakeLock(); // may be refused without a tap; the hint covers that
     claim(urlCode);
+  } else if (rePair) {
+    show("pair");
   } else if (creds) {
     show("idle");
     connect();
