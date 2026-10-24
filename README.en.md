@@ -151,7 +151,41 @@ Sales are kept for 31 days, then deleted automatically.
   07) and a Swish number for businesses and associations (starting with 123). Check that
   your Swish agreement allows the kind of selling you do.
 - **New versions:** your copy doesn't change when this project changes, so nothing
-  changes under you in the middle of a sale.
+  changes under you in the middle of a sale. See [Updating your till](#updating-your-till).
+
+## Updating your till
+
+Your till doesn't update itself: when a new version comes out, you fetch it. The
+[security policy](SECURITY.md) says how to hear about security fixes. Update on a day you
+are not selling, and make a test purchase afterwards.
+
+**The first time: connect your till to a fork.** The copy Cloudflare made in Step 1
+can't fetch new versions. A *fork* can: it is a copy that GitHub keeps linked to this
+project. Your till keeps its address, its settings and its sales. All that changes is
+where Cloudflare gets the code from.
+
+1. Open [the project](https://github.com/kjez66/swish_calculator) on GitHub, click
+   **Fork** and then **Create fork**.
+2. On Cloudflare, open **Workers & Pages**, click **swish-kassa** and go to **Settings**,
+   then **Build**.
+3. Click **Disconnect** to let go of the old copy. Then click **Connect** and choose your
+   fork and the branch **master**. Leave the other settings as they are. If your fork
+   isn't in the list, give Cloudflare access to it when asked.
+4. Cloudflare only builds your till when your fork changes. To get the newest version
+   right away, make a small change in your fork on GitHub: click **Add file**, then
+   **Create new file**, name it `my-till.md`, write anything in it and click **Commit
+   changes**. After a couple of minutes your till runs the new version.
+
+This needs your till to be called `swish-kassa`, the name suggested in Step 1. If it is
+called something else, Cloudflare stops with an error instead of changing anything.
+
+The old copy from Step 1 is no longer used. You can delete it on GitHub if you like.
+
+**Every time after that:**
+
+1. Open your fork on GitHub and click **Sync fork**, then **Update branch**.
+2. Wait a couple of minutes. Cloudflare builds and deploys the new version by itself.
+3. Make a test purchase.
 
 ## For developers
 

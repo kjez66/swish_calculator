@@ -148,7 +148,42 @@ Försäljningen sparas i 31 dagar och tas sedan bort automatiskt.
   företag och föreningar (börjar med 123). Kontrollera att ditt Swish-avtal tillåter
   den sortens försäljning du har.
 - **Nya versioner:** din kopia ändras inte när det här projektet ändras, så inget
-  ändras mitt under en försäljning.
+  ändras mitt under en försäljning. Se [Uppdatera din kassa](#uppdatera-din-kassa).
+
+## Uppdatera din kassa
+
+Kassan uppdateras inte av sig själv: när det kommer en ny version hämtar du den. Hur du
+får veta när det kommer säkerhetsrättningar står i [säkerhetspolicyn](SECURITY.md#på-svenska).
+Uppdatera en dag då du inte säljer, och gör ett testköp efteråt.
+
+**Första gången: koppla kassan till en fork.** Kopian som Cloudflare gjorde i steg 1 kan
+inte hämta nya versioner. Det kan en *fork*: en kopia som GitHub håller ihop med det här
+projektet. Kassan behåller sin adress, sina inställningar och sin försäljning. Det enda
+som ändras är varifrån Cloudflare hämtar koden.
+
+1. Öppna [projektet](https://github.com/kjez66/swish_calculator) på GitHub, klicka på
+   **Fork** och sedan på **Create fork**.
+2. Öppna **Workers & Pages** på Cloudflare, klicka på **swish-kassa** och gå till
+   **Settings** och sedan **Build**.
+3. Klicka på **Disconnect** för att släppa den gamla kopian. Klicka sedan på **Connect**
+   och välj din fork och grenen **master**. Låt de andra inställningarna vara. Finns inte
+   din fork i listan, ge Cloudflare tillgång till den när du blir ombedd.
+4. Cloudflare bygger kassan först när din fork ändras. För att få den nyaste versionen
+   direkt, gör en liten ändring i din fork på GitHub: klicka på **Add file** och sedan
+   **Create new file**, döp filen till `min-kassa.md`, skriv vad som helst i den och
+   klicka på **Commit changes**. Efter ett par minuter kör kassan den nya versionen.
+
+Det här kräver att kassan heter `swish-kassa`, som föreslogs i steg 1. Heter den något
+annat stoppar Cloudflare med ett fel i stället för att ändra något.
+
+Den gamla kopian från steg 1 används inte längre. Du kan ta bort den på GitHub om du vill.
+
+**Varje gång efter det:**
+
+1. Öppna din fork på GitHub och klicka på **Sync fork** och sedan på **Update branch**.
+2. Vänta ett par minuter. Cloudflare bygger och driftsätter den nya versionen av sig
+   själv.
+3. Gör ett testköp.
 
 ## För utvecklare
 

@@ -37,7 +37,7 @@ Every till is its own copy, deployed to its owner's Cloudflare account, and a co
 not change when this project does. Fixes are therefore announced as
 [GitHub security advisories](https://github.com/kjez66/swish_calculator/security/advisories);
 watch the repository (**Watch → Custom → Security alerts**) to hear about them, and
-update your copy to get them.
+update your copy to get them ([how](README.en.md#updating-your-till)).
 
 ## Scope
 
@@ -83,6 +83,6 @@ Bara den senaste versionen på `master` får säkerhetsrättningar. Din kassa ä
 som inte uppdateras av sig själv, så rättningar meddelas som
 [säkerhetsmeddelanden på GitHub](https://github.com/kjez66/swish_calculator/security/advisories).
 Bevaka projektet (**Watch → Custom → Security alerts**) för att få veta när du behöver
-uppdatera din kopia.
+uppdatera din kopia ([så här](README.md#uppdatera-din-kassa)).
 
 Testa bara mot `npm run dev` eller din egen kassa, aldrig mot någon annans.
