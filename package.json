@@ -18,8 +18,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@cloudflare/vitest-plugin": "^1.4.0",
-    "acorn": "8.14.0",
+    "@cloudflare/vitest-plugin": "^1.4.6",
+    "acorn": "8.19.0",
     "jsqr": "1.4.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.149.0"
