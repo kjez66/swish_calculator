@@ -189,7 +189,8 @@ The old copy from Step 1 is no longer used. You can delete it on GitHub if you l
 
 ## For developers
 
-Requires Node.js 24, the current LTS (22 also works).
+Requires Node.js 24, the current LTS (22 also works). Want to contribute? See
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ```bash
 npm install

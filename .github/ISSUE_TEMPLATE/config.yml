@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Säkerhetsproblem / Security problem
+    url: https://github.com/kjez66/swish_calculator/security/advisories/new
+    about: Rapportera privat, inte som ett öppet ärende. / Report it privately, not as a public issue.
