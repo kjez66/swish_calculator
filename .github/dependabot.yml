@@ -1,0 +1,26 @@
+# Minor and patch updates arrive together, once a week. Major updates come one
+# per PR, since they can need more than a green test run: qrcode-generator
+# draws the Swish QR code, so a new major needs a test purchase as well.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
