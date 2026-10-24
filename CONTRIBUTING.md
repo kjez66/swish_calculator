@@ -8,7 +8,7 @@ Found a security problem? Please don't open an issue: see [`SECURITY.md`](SECURI
 
 ## Getting started
 
-Requires Node.js 24 (22 also works).
+Requires Node.js 24 (22.12 or later also works).
 
 ```bash
 npm install
