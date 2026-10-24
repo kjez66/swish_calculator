@@ -15,8 +15,9 @@ const ECC_LEVEL = "Q";
 export const QUIET_ZONE_MODULES = 4;
 
 // Without this the encoder falls back to Latin-1 and Swedish characters in a
-// store name encode as mojibake. Set once at module load.
-qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+// store name encode as mojibake. Set once at module load. Version 2 of the
+// library ships no UTF-8 encoder of its own, so use the platform's.
+qrcode.stringToBytes = (s) => Array.from(new TextEncoder().encode(s));
 
 /**
  * @param {string} payload
