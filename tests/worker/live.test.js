@@ -21,16 +21,32 @@ function upgrade(roomId, ticket) {
   });
 }
 
+test("a display reconnect replaces its oldest socket instead of being refused", async () => {
+  const { roomId, displayToken, operatorToken } = await withDisplay();
+  const first = await openSocket(roomId, displayToken);
+  await first.next("state");
+  const closed = new Promise((resolve) => {
+    first.ws.addEventListener("close", (e) => resolve(e.code));
+  });
+  const second = await openSocket(roomId, displayToken);
+  await second.next("state");
+  // After a network drop the old socket can stay open, silent, on the server:
+  // refusing the new one would keep the display off the air.
+  const third = await openSocket(roomId, displayToken);
+  expect(await third.next("state")).toEqual({ state: "idle" });
+  expect(await closed).toBe(4000);
+  const operator = await openSocket(roomId, operatorToken);
+  expect(await operator.next("presence")).toEqual({ displays: 2 });
+});
+
 test("fresh tickets cannot bypass a display credential's concurrent socket limit", async () => {
   const { roomId, displayToken, operatorToken, api } = await withDisplay();
   const tickets = await Promise.all(
     Array.from({ length: 6 }, () => issueTicket(roomId, displayToken)),
   );
   const results = await Promise.all(tickets.map((ticket) => upgrade(roomId, ticket)));
-  expect(results.map((res) => res.status).sort()).toEqual([101, 101, 429, 429, 429, 429]);
-  for (const res of results) {
-    if (res.webSocket) res.webSocket.accept();
-  }
+  expect(results.map((res) => res.status)).toEqual([101, 101, 101, 101, 101, 101]);
+  for (const res of results) res.webSocket.accept();
   // The budget is per credential and room; it does not block the operator.
   const other = await openSocket(roomId, await pairDisplay(api));
   expect(await other.next("state")).toEqual({ state: "idle" });

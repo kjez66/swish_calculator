@@ -162,12 +162,26 @@ export class Kassa extends DurableObject {
     if (ticket.role === "display") {
       // Include closing and silent sockets: they still consume resources.
       const displays = this.ctx.getWebSockets("display");
-      if (
-        displays.length >= DISPLAY_SOCKETS_PER_ROOM ||
-        displays.filter((ws) => ws.deserializeAttachment().tokenHash === ticket.tokenHash)
-          .length >= DISPLAY_SOCKETS_PER_TOKEN
-      ) {
-        return fail("rate_limited", 429);
+      if (displays.length >= DISPLAY_SOCKETS_PER_ROOM) return fail("rate_limited", 429);
+      // A credential's newest sockets replace its oldest. Refusing instead
+      // would lock a display out after a network drop: its old socket can stay
+      // open, silent, on this side long after the phone has given up on it.
+      const own = displays
+        .filter(
+          (ws) =>
+            ws.readyState === WebSocket.OPEN &&
+            ws.deserializeAttachment().tokenHash === ticket.tokenHash,
+        )
+        .sort(
+          (a, b) =>
+            a.deserializeAttachment().connectedAt - b.deserializeAttachment().connectedAt,
+        );
+      for (const ws of own.slice(0, own.length - DISPLAY_SOCKETS_PER_TOKEN + 1)) {
+        try {
+          ws.close(4000, "replaced");
+        } catch {
+          // Already closing; the room limit still counts it.
+        }
       }
     }
 
