@@ -18,6 +18,8 @@ async function display({
   paired = true,
   approve = false,
   status = 200,
+  // Not 200, so no test opens a real WebSocket.
+  ticketStatus = 503,
 } = {}) {
   const elements = {};
   const element = (id) =>
@@ -55,13 +57,14 @@ async function display({
     expect(JSON.parse(stored)).toEqual(saved);
     return approve;
   });
-  const fetch = vi.fn((url) =>
-    Promise.resolve({
-      ok: url === "/api/pair/claim" && status === 200,
-      status,
+  const fetch = vi.fn((url) => {
+    const code = url === "/api/pair/claim" ? status : ticketStatus;
+    return Promise.resolve({
+      ok: code === 200,
+      status: code,
       json: () => Promise.resolve(proposed),
-    }),
-  );
+    });
+  });
   const source = await assetText("/display.js");
   const run = runInThisContext(
     "(function(document,localStorage,location,history,navigator,fetch,window,setTimeout,clearTimeout){" +
@@ -173,4 +176,21 @@ test("opening the display normally reconnects to the saved room", async () => {
       headers: { Authorization: "Bearer original-token" },
     },
   );
+});
+
+test("a display whose new room is gone can pair again without a reload", async () => {
+  const page = await display({ approve: true, ticketStatus: 401 });
+  expect(page.storage.removeItem).toHaveBeenCalledOnce();
+  expect(page.element("pair").hidden).toBe(false);
+  // There is no pairing left to keep.
+  expect(page.element("keepPairing").hidden).toBe(true);
+  expect(page.element("claim").disabled).toBe(false);
+  page.element("code").value = "654321";
+  page.element("pair").submit({ preventDefault() {} });
+  await page.settle();
+  expect(page.fetch).toHaveBeenCalledWith("/api/pair/claim", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: "654321" }),
+  });
 });

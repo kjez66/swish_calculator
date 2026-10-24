@@ -18,6 +18,7 @@
     } catch (_e) {
       /* storage unavailable: nothing to clear */
     }
+    el("keepPairing").hidden = true;
   }
 
   // URL parameters propose a pairing; navigation alone must not discard the
@@ -158,6 +159,8 @@
           keepPairing();
           return;
         }
+        // Ready for another code if this room is lost later (see connect).
+        el("claim").disabled = false;
         creds = { roomId: data.roomId, displayToken: data.displayToken };
         try {
           localStorage.setItem(LS, JSON.stringify(creds));
