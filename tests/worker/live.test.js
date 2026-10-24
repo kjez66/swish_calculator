@@ -9,6 +9,126 @@ async function withDisplay() {
   return { ...room, displayToken };
 }
 
+async function issueTicket(roomId, token) {
+  const res = await call("POST", `/api/stream-ticket?roomId=${roomId}`, { token });
+  expect(res.status).toBe(200);
+  return (await res.json()).ticket;
+}
+
+function upgrade(roomId, ticket) {
+  return call("GET", `/api/events?roomId=${roomId}&ticket=${ticket}`, {
+    headers: { Upgrade: "websocket" },
+  });
+}
+
+test("a display reconnect replaces its oldest socket instead of being refused", async () => {
+  const { roomId, displayToken, operatorToken } = await withDisplay();
+  const first = await openSocket(roomId, displayToken);
+  await first.next("state");
+  const closed = new Promise((resolve) => {
+    first.ws.addEventListener("close", (e) => resolve(e.code));
+  });
+  const second = await openSocket(roomId, displayToken);
+  await second.next("state");
+  // After a network drop the old socket can stay open, silent, on the server:
+  // refusing the new one would keep the display off the air.
+  const third = await openSocket(roomId, displayToken);
+  expect(await third.next("state")).toEqual({ state: "idle" });
+  expect(await closed).toBe(4000);
+  const operator = await openSocket(roomId, operatorToken);
+  expect(await operator.next("presence")).toEqual({ displays: 2 });
+});
+
+test("fresh tickets cannot bypass a display credential's concurrent socket limit", async () => {
+  const { roomId, displayToken, operatorToken, api } = await withDisplay();
+  const tickets = await Promise.all(
+    Array.from({ length: 6 }, () => issueTicket(roomId, displayToken)),
+  );
+  const results = await Promise.all(tickets.map((ticket) => upgrade(roomId, ticket)));
+  expect(results.map((res) => res.status)).toEqual([101, 101, 101, 101, 101, 101]);
+  for (const res of results) res.webSocket.accept();
+  // The budget is per credential and room; it does not block the operator.
+  const other = await openSocket(roomId, await pairDisplay(api));
+  expect(await other.next("state")).toEqual({ state: "idle" });
+  const operator = await openSocket(roomId, operatorToken);
+  expect(await operator.next("presence")).toEqual({ displays: 3 });
+  const otherRoom = await withDisplay();
+  const separate = await openSocket(otherRoom.roomId, otherRoom.displayToken);
+  expect(await separate.next("state")).toEqual({ state: "idle" });
+});
+
+test("the room bounds all display sockets and frees capacity after a close", async () => {
+  const { roomId, operatorToken, displayToken, api } = await withDisplay();
+  const displays = [];
+  for (let i = 0; i < 16; i++) {
+    const token = i === 0 ? displayToken : await pairDisplay(api);
+    for (let j = 0; j < 2; j++) {
+      const display = await openSocket(roomId, token);
+      await display.next("state");
+      displays.push(display);
+    }
+  }
+  const operator = await openSocket(roomId, operatorToken);
+  expect(await operator.next("presence")).toEqual({ displays: 32 });
+  const anotherToken = await pairDisplay(api);
+  const refusedTicket = await issueTicket(roomId, anotherToken);
+  expect((await upgrade(roomId, refusedTicket)).status).toBe(429);
+  // A refused upgrade still consumes its single-use ticket.
+  expect((await upgrade(roomId, refusedTicket)).status).toBe(401);
+  displays[0].ws.close(1000, "bye");
+  expect(await operator.next("presence")).toEqual({ displays: 31 });
+  const replacement = await openSocket(roomId, displayToken);
+  expect(await replacement.next("state")).toEqual({ state: "idle" });
+  expect(await operator.next("presence")).toEqual({ displays: 32 });
+});
+
+test("a display hello burst is ignored before replay and presence work", async () => {
+  const { roomId, operatorToken, displayToken } = await withDisplay();
+  const stub = env.KASSA.getByName(roomId);
+  const now = Date.now();
+  await runInDurableObject(stub, (instance) => {
+    instance.now = () => new Date(now);
+  });
+  const operator = await openSocket(roomId, operatorToken);
+  await operator.next("state");
+  await operator.next("presence");
+  const display = await openSocket(roomId, displayToken);
+  await display.next("room");
+  await display.next("state");
+  await operator.next("presence");
+  // Await the handlers so the assertions do not depend on network timing.
+  await runInDurableObject(stub, async (instance, state) => {
+    const ws = state.getWebSockets("display")[0];
+    await Promise.all(
+      Array.from({ length: 20 }, () => instance.webSocketMessage(ws, "hello")),
+    );
+  });
+  display.ws.send("ping");
+  operator.ws.send("ping");
+  await display.nextRaw("pong");
+  await operator.nextRaw("pong");
+  expect(display.pending()).toBe(0);
+  expect(operator.pending()).toBe(0);
+  // Replays resume at the boundary, with concurrent repeats still suppressed.
+  await runInDurableObject(stub, async (instance, state) => {
+    instance.now = () => new Date(now + 5000);
+    const ws = state.getWebSockets("display")[0];
+    await Promise.all([
+      instance.webSocketMessage(ws, "hello"),
+      instance.webSocketMessage(ws, "hello"),
+    ]);
+  });
+  expect(await display.next("room")).toEqual({ storeName: "Kiosken" });
+  expect(await display.next("state")).toEqual({ state: "idle" });
+  expect(await operator.next("presence")).toEqual({ displays: 1 });
+  display.ws.send("ping");
+  operator.ws.send("ping");
+  await display.nextRaw("pong");
+  await operator.nextRaw("pong");
+  expect(display.pending()).toBe(0);
+  expect(operator.pending()).toBe(0);
+});
+
 test("hello replays the store name and the current state to a display", async () => {
   const { roomId, displayToken } = await withDisplay();
   const display = await openSocket(roomId, displayToken);
@@ -128,9 +248,11 @@ test("unknown messages are ignored", async () => {
   await display.next("state");
   display.ws.send("foo");
   display.ws.send("presence"); // operators only
-  display.ws.send("hello");
-  // The socket still works: the hello is answered, and nothing else was sent.
-  expect(await display.next("state")).toEqual({ state: "idle" });
+  display.ws.send("ping");
+  // Unknown messages leave the socket usable and send no extra response.
+  expect(await display.nextRaw("pong")).toBe("pong");
+  expect(await display.next("room")).toEqual({ storeName: "Kiosken" });
+  expect(display.pending()).toBe(0);
   const operator = await openSocket(roomId, operatorToken);
   expect(await operator.next("presence")).toEqual({ displays: 1 });
 });

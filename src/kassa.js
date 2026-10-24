@@ -29,6 +29,10 @@ const PURGEABLE = ["sale:", "ticket:", "charge:", "counter:"];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** A display that has not pinged (or connected) this recently is gone. */
 const PRESENCE_TIMEOUT_MS = 45_000;
+/** Allow an old connection to overlap a reconnect, but bound display fan-out. */
+const DISPLAY_SOCKETS_PER_TOKEN = 2;
+const DISPLAY_SOCKETS_PER_ROOM = 32;
+const HELLO_INTERVAL_MS = 5000;
 
 /** Zero-padded, so storage's key order is order-number order. */
 const saleKey = (date, orderNo) => `sale:${date}:${String(orderNo).padStart(6, "0")}`;
@@ -160,10 +164,40 @@ export class Kassa extends DurableObject {
     const now = this.now().getTime();
     if (ticket.expiresAt <= now) return fail("unauthorized", 401);
 
+    if (ticket.role === "display") {
+      // Include closing and silent sockets: they still consume resources.
+      const displays = this.ctx.getWebSockets("display");
+      if (displays.length >= DISPLAY_SOCKETS_PER_ROOM) return fail("rate_limited", 429);
+      // A credential's newest sockets replace its oldest. Refusing instead
+      // would lock a display out after a network drop: its old socket can stay
+      // open, silent, on this side long after the phone has given up on it.
+      const own = displays
+        .filter(
+          (ws) =>
+            ws.readyState === WebSocket.OPEN &&
+            ws.deserializeAttachment().tokenHash === ticket.tokenHash,
+        )
+        .sort(
+          (a, b) =>
+            a.deserializeAttachment().connectedAt - b.deserializeAttachment().connectedAt,
+        );
+      for (const ws of own.slice(0, own.length - DISPLAY_SOCKETS_PER_TOKEN + 1)) {
+        try {
+          ws.close(4000, "replaced");
+        } catch {
+          // Already closing; the room limit still counts it.
+        }
+      }
+    }
+
     const [client, server] = Object.values(new WebSocketPair());
     // Hibernatable: the object can sleep while sockets stay open.
     this.ctx.acceptWebSocket(server, [ticket.role]);
-    server.serializeAttachment({ role: ticket.role, connectedAt: now });
+    server.serializeAttachment({
+      role: ticket.role,
+      tokenHash: ticket.tokenHash,
+      connectedAt: now,
+    });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -173,9 +207,20 @@ export class Kassa extends DurableObject {
    * @param {WebSocket} ws @param {string|ArrayBuffer} message
    */
   async webSocketMessage(ws, message) {
-    const { role } = ws.deserializeAttachment();
+    const attachment = ws.deserializeAttachment();
+    const { role } = attachment;
     if (message === "hello") {
       if (role === "display") {
+        const now = this.now().getTime();
+        if (
+          attachment.helloAt !== undefined &&
+          now - attachment.helloAt < HELLO_INTERVAL_MS
+        ) {
+          return;
+        }
+        // Persist before any await, so concurrent messages and hibernation
+        // cannot bypass the throttle. Fresh sockets still replay immediately.
+        ws.serializeAttachment({ ...attachment, helloAt: now });
         const settings = await this.ctx.storage.get("settings");
         this.#send([ws], "room", { storeName: settings?.storeName ?? null });
       }
@@ -231,7 +276,10 @@ export class Kassa extends DurableObject {
   /** @param {Request} request */
   async fetch(request) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/events") return await this.#openSocket(request, url);
+    if (url.pathname === "/api/events") {
+      // Ticket consumption and admission must share a queue with ticket issuance.
+      return await this.#serial(() => this.#openSocket(request, url));
+    }
     return await this.#serial(() => this.#api(request, url));
   }
 
@@ -263,7 +311,7 @@ export class Kassa extends DurableObject {
         ? "display"
         : null;
     if (!role || (required !== "any" && role !== required)) return null;
-    return { role, room };
+    return { role, room, tokenHash: hash };
   }
 
   /** @param {Request} request @param {URL} url */
@@ -500,6 +548,7 @@ export class Kassa extends DurableObject {
       const ticket = randomToken();
       await storage.put(`ticket:${ticket}`, {
         role: auth.role,
+        tokenHash: auth.tokenHash,
         expiresAt: this.now().getTime() + TICKET_TTL_MS,
       });
       await this.#armPurge(); // an unused ticket stays behind
