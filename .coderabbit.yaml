@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    # Earlier specs and plans are kept as written.
+    - "!docs/superpowers/**"
+    - "!package-lock.json"
+  path_instructions:
+    - path: "**/*"
+      instructions: >-
+        This till shows a Swish QR code to paying customers. Treat anything that could
+        put a different recipient, amount or message in that code than the till's
+        owner set as the most serious kind of bug. All money is integer öre (hundredths
+        of a krona); flag any floating-point arithmetic on amounts.
+    - path: "public/display.js"
+      instructions: >-
+        Must stay ECMAScript 5: it runs on old phones (tests/display_es5.test.js
+        enforces this). No let/const, arrow functions, template literals, trailing
+        commas in calls, Promise-only APIs without a fallback, or AbortController. A
+        display page stays open all day, so it can be running an older display.js than
+        the server: messages from src/ must stay readable by the previous version.
+    - path: "src/**"
+      instructions: >-
+        A Cloudflare Worker with Durable Objects on the Free plan. Kassa requests are
+        handled one at a time through #serial, so read-then-write code must go through
+        it. Watch for anything that wakes a Durable Object or adds requests
+        needlessly: displays stay connected all day and the Free plan's daily limits
+        are small.
+    - path: "README*.md"
+      instructions: >-
+        README.md (Swedish) and README.en.md (English) are a pair for non-technical
+        readers. A change to one needs the same change to the other, in plain words.
+    - path: "tests/**"
+      instructions: >-
+        Worker tests run inside the Workers runtime (tests/worker/). Prefer testing
+        through the public API as the pages use it over reaching into internals.
+chat:
+  auto_reply: true
