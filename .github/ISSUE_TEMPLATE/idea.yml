@@ -1,0 +1,23 @@
+name: Idé / Idea
+description: Föreslå en förbättring. / Suggest an improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Kassan är enkel med flit: en kiosk ska kunna komma igång med en knapp och köra
+        gratis. Berätta gärna vilket problem idén löser.
+
+        The till is simple on purpose: a kiosk should get going with one button and run
+        for free. It helps to say what problem the idea solves.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Vad är problemet? / What is the problem?
+      description: Vad händer i kiosken i dag? / What happens at the kiosk today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Vad skulle hjälpa? / What would help?

@@ -1,0 +1,48 @@
+name: Något fungerar inte / Something doesn't work
+description: Rapportera ett fel i kassan eller displayen. / Report a bug in the till or the display.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Svara gärna på svenska eller engelska. / Swedish or English are both fine.
+
+        **Säkerhetsproblem? Skriv inte här:** se [säkerhetspolicyn](https://github.com/kjez66/swish_calculator/security/policy).
+        **Security problem? Don't post it here:** see the [security policy](https://github.com/kjez66/swish_calculator/security/policy).
+  - type: dropdown
+    id: where
+    attributes:
+      label: Var? / Where?
+      options:
+        - Kassan / The till
+        - Displayen / The display
+        - Båda / Both
+        - Installation eller uppdatering / Setup or updating
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Vad hände? / What happened?
+      description: Och vad du väntade dig. / And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Hur får man det att hända? / How do you make it happen?
+      placeholder: |
+        1. …
+        2. …
+  - type: input
+    id: device
+    attributes:
+      label: Mobil och webbläsare / Phone and browser
+      placeholder: t.ex. / e.g. iPhone 12, Safari
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: När installerade eller uppdaterade du kassan senast? / When did you last set up or update your till?
+      placeholder: t.ex. / e.g. maj 2026 / May 2026

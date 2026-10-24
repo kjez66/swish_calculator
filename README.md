@@ -187,7 +187,8 @@ Den gamla kopian från steg 1 används inte längre. Du kan ta bort den på GitH
 
 ## För utvecklare
 
-Kräver Node.js 24, nuvarande LTS (22 fungerar också).
+Kräver Node.js 24, nuvarande LTS (22 fungerar också). Vill du bidra? Läs
+[`CONTRIBUTING.md`](CONTRIBUTING.md) (på engelska).
 
 ```bash
 npm install
