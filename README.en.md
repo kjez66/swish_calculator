@@ -2,6 +2,8 @@
 
 [Svenska](README.md) · **English**
 
+[![CodeRabbit Reviews](https://img.shields.io/coderabbit/prs/github/kjez66/swish_calculator?labelColor=171717&color=FF570A&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+
 A simple tool for taking Swish payments at a club kiosk, a market stall or a café, using
 your phone.
 

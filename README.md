@@ -2,6 +2,8 @@
 
 **Svenska** · [English](README.en.md)
 
+[![CodeRabbit Reviews](https://img.shields.io/coderabbit/prs/github/kjez66/swish_calculator?labelColor=171717&color=FF570A&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+
 Ett enkelt verktyg för att ta betalt med Swish i föreningens kiosk, på marknaden eller i
 caféet, med din mobil.
 
