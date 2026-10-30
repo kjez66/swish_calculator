@@ -17,8 +17,8 @@
     "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@cloudflare/vitest-plugin": "^1.4.6",
+    "@biomejs/biome": "2.6.3",
+    "@cloudflare/vitest-plugin": "^1.4.8",
     "acorn": "8.19.0",
     "jsqr": "1.4.0",
     "vitest": "^5.0.5",
