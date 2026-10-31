@@ -25,6 +25,6 @@
     "wrangler": "^4.149.0"
   },
   "allowScripts": {
-    "workerd@1.20261006.1": true
+    "workerd@1.20261023.1": true
   }
 }
