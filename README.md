@@ -81,6 +81,9 @@ adressen i webbläsaren och sparar den som bokmärke.
    - **Butiksnamn:** namnet på er kiosk, ert café eller er förening. Det visas för
      kunden och står i meddelandet på varje betalning.
    - **Swish-nummer:** numret som pengarna ska till.
+   - **Logga (valfri):** föreningens logga. Den visas på kundens display, när kunden
+     betalar i kassan och i PDF-rapporten. Spara bilden från föreningens webbplats i
+     telefonen och välj den här.
    - **Produkter:** dina varor och priser. En ny kassa har en exempelmeny; ändra den, ta
      bort det du inte säljer och lägg till dina egna. **Aktiv** döljer en vara i kassan
      utan att ta bort den, för när något tar slut.

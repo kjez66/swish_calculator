@@ -776,9 +776,12 @@ input[aria-invalid] {
 .qr-wrap {
   text-align: center;
 }
-/* Swish's logo rules: the unmodified file, on a white or black plate. */
+/* Swish's logo rules: the unmodified file, on a white or black plate. The
+   team's logo, when there is one, sits before it with 16 px of clear space. */
 .logo-plate {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
   background: #fff;
   border-radius: 12px;
   padding: 8px 14px;
@@ -788,6 +791,34 @@ input[aria-invalid] {
   display: block;
   height: 28px;
   width: auto;
+}
+/* Fitted, never stretched: whatever its shape, it stays inside 96 × 28, the
+   Swish logo's height, so the plate (and Klar's place) is as it was. */
+.logo-plate .team-logo {
+  height: auto;
+  max-height: 28px;
+  max-width: 96px;
+}
+.logo-plate .team-logo[hidden] {
+  display: none;
+}
+
+/* The logo preview in settings: on white, as customers will see it. */
+.logo-preview {
+  display: inline-block;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-1);
+}
+.logo-preview[hidden] {
+  display: none;
+}
+#logoPreview {
+  display: block;
+  max-width: 160px;
+  max-height: 96px;
 }
 /* The operator's QR is the fallback when no display is paired, so it is sized to
    leave Klar on screen even on a 320x568 phone. */

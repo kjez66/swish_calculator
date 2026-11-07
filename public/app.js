@@ -9,6 +9,8 @@ const LS = "swish-kassa-room";
 let room = JSON.parse(localStorage.getItem(LS) ?? "null");
 let settings = null;
 let products = [];
+/** Where the kassa's logo is served, or null without one (from /api/state). */
+let logoUrl = null;
 let stateLoaded = false;
 /** @type {Map<string, number>} product id -> quantity */
 const basket = new Map();
@@ -19,15 +21,17 @@ let linesOpen = false;
 
 // --- API -------------------------------------------------------------------
 
+/** A Blob body (the logo) is sent as it is; anything else as JSON. */
 async function api(method, path, body) {
   const sep = path.includes("?") ? "&" : "?";
+  const blob = body instanceof Blob;
   const res = await fetch(`${path}${sep}roomId=${room.roomId}`, {
     method,
     headers: {
       Authorization: `Bearer ${room.operatorToken}`,
-      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(body ? { "Content-Type": blob ? body.type : "application/json" } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: blob ? body : body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -172,6 +176,7 @@ function renderBasket() {
 function renderAll() {
   const focused = document.activeElement?.dataset?.focus;
   $("storeName").textContent = settings?.storeName || "Swish-kalkylator";
+  showQrTeamLogo();
   renderProducts();
   const result = renderBasket();
   if (focused) {
@@ -182,6 +187,19 @@ function renderAll() {
     target?.focus();
   }
   return result;
+}
+
+// The team logo beside the Swish logo in the payment view: hidden until it
+// has loaded, and hidden again if it fails (a logo replaced on another phone
+// is gone from its old URL), so a broken image never shows.
+function showQrTeamLogo() {
+  const img = $("qrTeamLogo");
+  if ((img.getAttribute("src") ?? null) === logoUrl) return;
+  img.hidden = true;
+  img.onload = () => (img.hidden = false);
+  img.onerror = () => (img.hidden = true);
+  if (logoUrl) img.src = logoUrl;
+  else img.removeAttribute("src");
 }
 
 function escapeHtml(s) {
@@ -403,9 +421,111 @@ function sanitizePrice(input) {
   if (clean !== input.value) input.value = clean;
 }
 
+// --- the team logo, in settings ---------------------------------------------
+
+/** The longest side of a logo as uploaded: plenty for a phone screen and A4. */
+const LOGO_MAX_PX = 512;
+const LOGO_UNREADABLE = "Bilden kunde inte läsas. Välj en PNG- eller JPEG-bild.";
+/**
+ * What Spara will do to the logo: null leaves it, {remove: true} deletes it,
+ * {png: Blob} uploads a new one. Nothing is sent before Spara; Avbryt drops it.
+ */
+let logoDraft = null;
+
+/**
+ * The picked file, decoded and redrawn at most 512 px on its longest side,
+ * as PNG. The server only ever gets this small re-encoded copy, never the
+ * file itself (and so none of a photo's metadata). Transparency is kept.
+ * @param {File} file
+ * @returns {Promise<{png: Blob, canvas: HTMLCanvasElement}>}
+ */
+async function shrinkLogo(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, LOGO_MAX_PX / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const png = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!png) throw new Error("encode");
+  return { png, canvas };
+}
+
+/** Draw an image or canvas into the preview, at its own size (CSS scales it). */
+function drawPreview(source) {
+  const preview = $("logoPreview");
+  preview.width = source.naturalWidth || source.width;
+  preview.height = source.naturalHeight || source.height;
+  preview.getContext("2d").drawImage(source, 0, 0);
+  $("logoPreviewPlate").hidden = false;
+}
+
+/** The logo section's buttons, for a kassa that will or will not have a logo. */
+function showLogoControls(hasLogo) {
+  $("logoPick").textContent = hasLogo ? "Byt bild" : "Välj bild";
+  $("logoRemove").hidden = !hasLogo;
+  if (!hasLogo) $("logoPreviewPlate").hidden = true;
+}
+
+function openLogoSection() {
+  logoDraft = null;
+  clearLogoError();
+  showLogoControls(Boolean(logoUrl));
+  $("logoPreviewPlate").hidden = true;
+  if (logoUrl) {
+    const img = new Image();
+    img.onload = () => {
+      // Picked a new one meanwhile: that preview wins.
+      if (!logoDraft) drawPreview(img);
+    };
+    img.src = logoUrl;
+  }
+}
+
+$("logoPick").onclick = () => $("logoFile").click();
+$("logoFile").onchange = async () => {
+  const file = $("logoFile").files[0];
+  // Cleared so that picking the same file again still fires a change.
+  $("logoFile").value = "";
+  if (!file) return;
+  clearLogoError();
+  try {
+    const { png, canvas } = await shrinkLogo(file);
+    logoDraft = { png };
+    drawPreview(canvas);
+    showLogoControls(true);
+  } catch {
+    logoError(LOGO_UNREADABLE);
+  }
+};
+$("logoRemove").onclick = () => {
+  logoDraft = { remove: true };
+  showLogoControls(false);
+  $("logoPick").focus();
+};
+
+/** An error at the logo field, below its buttons, read out with Välj bild. */
+function logoError(message) {
+  clearLogoError();
+  const msg = document.createElement("p");
+  msg.className = "field-err";
+  msg.id = "logoErr";
+  msg.textContent = message;
+  $("logoPick").parentElement.after(msg);
+  $("logoPick").setAttribute("aria-describedby", "logoTitle logoErr");
+  $("logoPick").focus();
+}
+
+function clearLogoError() {
+  $("logoErr")?.remove();
+  $("logoPick").setAttribute("aria-describedby", "logoTitle");
+}
+
 function openSettings() {
   $("fName").value = settings?.storeName ?? "";
   $("fPayee").value = settings?.payeeNumber ?? "";
+  openLogoSection();
   $("productRows").innerHTML = "";
   const sorted = [...products].sort((a, b) => a.sortOrder - b.sortOrder);
   for (const p of sorted.length ? sorted : [undefined]) {
@@ -447,6 +567,7 @@ function fieldError(input, message, after = input) {
 
 $("saveSettings").onclick = async () => {
   clearFieldErrors();
+  clearLogoError();
   const next = [];
   const invalid = [];
   [...$("productRows").children].forEach((row, i) => {
@@ -486,8 +607,16 @@ $("saveSettings").onclick = async () => {
       payeeNumber: $("fPayee").value.trim(),
     });
     await api("PUT", "/api/products", next);
+    // Last: a failed upload leaves the rest saved, and Spara again retries it.
+    if (logoDraft?.png) await api("PUT", "/api/logo", logoDraft.png);
+    else if (logoDraft?.remove) await api("DELETE", "/api/logo");
+    logoDraft = null;
   } catch (err) {
-    if (err.message === "invalid_payee") {
+    if (err.message === "logo_too_large") {
+      logoError("Bilden är för stor.");
+    } else if (err.message === "invalid_logo") {
+      logoError(LOGO_UNREADABLE);
+    } else if (err.message === "invalid_payee") {
       fieldError(
         $("fPayee"),
         "Numret ser inte giltigt ut. Skriv t.ex. 070-123 45 67.",
@@ -504,6 +633,34 @@ $("saveSettings").onclick = async () => {
 };
 
 // --- sales log -------------------------------------------------------------
+
+/**
+ * The kassa's logo as JPEG bytes for the PDF report, which embeds JPEG as it
+ * is. Drawn on white first: JPEG has no transparency, and a transparent
+ * background would otherwise turn black. Null without a logo or when it
+ * cannot be loaded: the report is then made without one, never not at all.
+ * @returns {Promise<{jpeg: Uint8Array, width: number, height: number} | null>}
+ */
+async function logoJpeg() {
+  if (!logoUrl) return null;
+  try {
+    const img = new Image();
+    img.src = logoUrl;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    const base64 = canvas.toDataURL("image/jpeg", 0.92).split(",")[1];
+    const jpeg = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    return { jpeg, width: canvas.width, height: canvas.height };
+  } catch {
+    return null;
+  }
+}
 
 const STOCKHOLM = "Europe/Stockholm";
 // The server files a sale under its Stockholm date; "today" must agree.
@@ -650,13 +807,17 @@ async function loadSales({ afterRemoving, dayEmptied } = {}) {
     `<button class="icon-btn sales-pdf">Ladda ner PDF</button>` +
     `<details class="sales-orders"><summary>Alla köp (${summary.count})</summary>` +
     `<ol></ol></details>`;
-  $("salesBody").querySelector(".sales-pdf").onclick = () =>
+  // Made now, not on the tap: Safari may refuse a download that comes long after
+  // the tap that asked for it, and by then this has long finished.
+  const logoReady = logoJpeg();
+  $("salesBody").querySelector(".sales-pdf").onclick = async () =>
     saveFile(
       salesReportPdf({
         storeName: settings?.storeName ?? "",
         date,
         summary,
         createdAt: Date.now(),
+        logo: (await logoReady) ?? undefined,
       }),
       `forsaljning-${date}.pdf`,
       "application/pdf",
@@ -855,6 +1016,7 @@ async function refresh() {
   const state = await api("GET", "/api/state");
   settings = state.settings;
   products = state.products;
+  logoUrl = state.logoUrl ?? null;
   stateLoaded = true;
   for (const id of [...basket.keys()]) {
     if (!products.some((p) => p.id === id && isEnabled(p))) basket.delete(id);

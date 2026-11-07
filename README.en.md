@@ -84,6 +84,9 @@ in the browser and bookmark it.
    - **Butiksnamn:** the name of your kiosk, café or club. It is shown to the customer
      and goes into the note of every payment.
    - **Swish-nummer:** the number the money goes to.
+   - **Logga (valfri):** your club's logo. It is shown on the customer display, on the
+     till's own payment screen and in the PDF report. Save the image from your club's
+     website to the phone and pick it here.
    - **Produkter:** your products and prices. A new till comes with an example menu;
      change it, remove what you don't sell, and add your own. **Aktiv** hides a product
      from the till without deleting it, for when something runs out.

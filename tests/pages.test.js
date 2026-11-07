@@ -42,3 +42,15 @@ test("every display screen has a team logo, hidden until it loads", async () => 
     expect(html.slice(start, end), screen).toContain('class="team-logo"');
   }
 });
+
+test("the till has a logo section in settings and a team logo in the payment view", async () => {
+  const html = await assetText("/");
+  expect(html).toContain('<h3 id="logoTitle">Logga (valfri)</h3>');
+  expect(html).toMatch(
+    /<input id="logoFile" type="file"\s+accept="image\/png,image\/jpeg,image\/webp"/,
+  );
+  expect(html).toContain('<canvas id="logoPreview"');
+  expect(html).toMatch(
+    /<div class="logo-plate">\s*<img class="team-logo" id="qrTeamLogo" alt="" hidden>\s*<img src="\/brand\/swish-logo.svg" alt="Swish">/,
+  );
+});

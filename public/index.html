@@ -108,6 +108,18 @@
       <input id="fName" autocomplete="organization">
       <label for="fPayee">Swish-nummer</label>
       <input id="fPayee" type="tel" autocomplete="tel" placeholder="070-123 45 67">
+      <h3 id="logoTitle">Logga (valfri)</h3>
+      <p class="note">Visas för kunden och i PDF-rapporten.</p>
+      <!-- A canvas, not an <img>: a picked file would need a blob: URL, which
+           the page's CSP does not allow. White, as the display shows it. -->
+      <div class="logo-preview" id="logoPreviewPlate" hidden>
+        <canvas id="logoPreview" role="img" aria-label="Förhandsvisning av loggan"></canvas>
+      </div>
+      <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="row logo-actions">
+        <button class="icon-btn" id="logoPick" aria-describedby="logoTitle">Välj bild</button>
+        <button class="icon-btn" id="logoRemove" hidden>Ta bort</button>
+      </div>
       <h3>Produkter</h3>
       <!-- Phones show no hover titles, so the buttons are explained here too. -->
       <p class="note">
@@ -171,6 +183,7 @@
     <dialog id="qrDlg" aria-label="Betalning">
       <div class="qr-wrap">
         <div class="logo-plate">
+          <img class="team-logo" id="qrTeamLogo" alt="" hidden>
           <img src="/brand/swish-logo.svg" alt="Swish">
         </div>
         <div class="amount-big" id="qrAmount"></div>
