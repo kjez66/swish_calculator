@@ -31,3 +31,14 @@ test("the official Swish logo is shipped and shown on both pages", async () => {
     expect(html.includes('src="/brand/swish-logo.svg"'), page).toBe(true);
   }
 });
+
+test("every display screen has a team logo, hidden until it loads", async () => {
+  const html = await assetText("/display.html");
+  const logos = html.match(/<img class="team-logo" alt="" hidden>/g) ?? [];
+  expect(logos).toHaveLength(3);
+  for (const screen of ["idle", "thanks", "charge"]) {
+    const start = html.indexOf(`<div id="${screen}"`);
+    const end = html.indexOf("</div>", html.indexOf("</h1>", start));
+    expect(html.slice(start, end), screen).toContain('class="team-logo"');
+  }
+});

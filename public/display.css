@@ -110,6 +110,70 @@ main > form {
   display: none;
 }
 
+/* --- team logo ---------------------------------------------------------- */
+/* Optional. Fitted inside a box per screen, never stretched or cropped:
+   max-width and max-height with auto sizes keep the shape on any phone,
+   where object-fit is missing on old ones. */
+.team-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+}
+#idle .team-logo {
+  max-height: 112px;
+  max-height: clamp(88px, 16vh, 160px);
+  max-width: 70vw;
+  margin-bottom: 20px;
+}
+/* Small while paying, so the amount and the QR keep their space. */
+#charge .team-logo {
+  grid-area: teamlogo;
+  max-height: 40px;
+  max-height: clamp(32px, 6vh, 56px);
+  max-width: 50vw;
+  margin-bottom: 8px;
+}
+/* The name's own top margin was slack above the screen; under a logo it
+   would only push the QR's column down. */
+#charge .team-logo:not([hidden]) + .brand {
+  margin-top: 0;
+}
+/* In place of the small grey name (display.js hides it while this shows). */
+#thanks .team-logo {
+  max-height: 72px;
+  max-height: clamp(56px, 11vh, 96px);
+  max-width: 50vw;
+  margin-top: 28px;
+}
+/* Sideways, height runs out: smaller logos, and with one shown the welcome
+   screen's wide gaps close up, so the Swish logo stays on a 568x320 screen.
+   Narrow on the paying screen, so a banner cannot widen the text column. */
+@media (orientation: landscape) {
+  #idle .team-logo {
+    max-height: 44px;
+    max-height: min(14vh, 96px);
+    max-width: 40vw;
+    margin-bottom: 10px;
+  }
+  #idle .team-logo:not([hidden]) ~ .idle-title {
+    margin-top: 20px;
+  }
+  #idle .team-logo:not([hidden]) ~ .pay-with {
+    margin-top: 16px;
+  }
+  #charge .team-logo {
+    max-height: 32px;
+    max-height: min(10vh, 56px);
+    max-width: 30vw;
+  }
+  #thanks .team-logo {
+    max-height: 40px;
+    max-height: min(13vh, 72px);
+    margin-top: 16px;
+  }
+}
+
 /* --- welcome ------------------------------------------------------------ */
 .idle-title {
   font-size: 22px;
@@ -200,7 +264,7 @@ main > form {
    moves to the right, so everything fits on one screen. */
 #charge {
   display: grid;
-  grid-template-areas: "brand" "amount" "note" "qr" "logo" "scan";
+  grid-template-areas: "teamlogo" "brand" "amount" "note" "qr" "logo" "scan";
   justify-items: center;
 }
 #charge .brand {
@@ -224,8 +288,12 @@ main > form {
 @media (orientation: landscape) {
   #charge {
     grid-template-columns: auto auto;
-    grid-template-rows: 1fr auto auto auto auto 1fr;
-    grid-template-areas: "qr brand" "qr amount" "qr note" "qr logo" "qr scan" "qr .";
+    /* The first row takes the slack above the text, holding the team logo at its
+       foot; without one it is empty and the name sits where it always has. */
+    grid-template-rows: 1fr auto auto auto auto auto 1fr;
+    grid-template-areas:
+      "qr teamlogo" "qr brand" "qr amount" "qr note" "qr logo" "qr scan"
+      "qr .";
     column-gap: 36px;
     align-items: center;
   }
@@ -236,7 +304,7 @@ main > form {
     width: 76vh;
     width: min(80vh, 50vw);
   }
-  #charge .brand {
+  #charge .team-logo {
     align-self: end;
   }
   .amount {

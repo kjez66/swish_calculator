@@ -181,13 +181,59 @@
   }
 
   // --- live connection -----------------------------------------------------
+  var storeName = "";
+  var logoUrl = null;
+  // Whether the "Tack!" screen's logo has loaded: it then stands in for the
+  // small grey name there, which the other screens keep under their logo.
+  var thanksLogoShown = false;
+
   function setStoreName(name) {
+    storeName = name || "";
     var els = document.querySelectorAll(".store-name");
     var i;
     for (i = 0; i < els.length; i++) {
-      els[i].textContent = name || "";
-      els[i].hidden = !name;
+      els[i].textContent = storeName;
+      els[i].hidden = !storeName;
     }
+    showThanksName();
+  }
+
+  function showThanksName() {
+    document.querySelector("#thanks .store-name").hidden = !storeName || thanksLogoShown;
+  }
+
+  // Each logo stays hidden until it has loaded, and hides again if it fails
+  // (a replaced logo's old URL is gone): never a broken image for a customer.
+  function setLogo(url) {
+    url = url || null;
+    if (url === logoUrl) return;
+    logoUrl = url;
+    thanksLogoShown = false;
+    showThanksName();
+    var imgs = document.querySelectorAll(".team-logo");
+    var i;
+    for (i = 0; i < imgs.length; i++) loadLogo(imgs[i], url);
+  }
+
+  function loadLogo(img, url) {
+    var onThanks = img.parentNode.id === "thanks";
+    img.hidden = true;
+    img.onload = function () {
+      img.hidden = false;
+      if (onThanks) {
+        thanksLogoShown = true;
+        showThanksName();
+      }
+    };
+    img.onerror = function () {
+      img.hidden = true;
+      if (onThanks) {
+        thanksLogoShown = false;
+        showThanksName();
+      }
+    };
+    if (url) img.src = url;
+    else img.removeAttribute("src");
   }
 
   function setOnline(online) {
@@ -289,8 +335,10 @@
           if (e.data === "pong") return;
           var msg = JSON.parse(e.data);
           // Whose stall this is: shown on the welcome, charge and thank-you screens.
-          if (msg.event === "room") setStoreName(msg.data.storeName);
-          else if (msg.event === "state") {
+          if (msg.event === "room") {
+            setStoreName(msg.data.storeName);
+            setLogo(msg.data.logoUrl);
+          } else if (msg.event === "state") {
             setOnline(true);
             renderState(msg.data);
           }
