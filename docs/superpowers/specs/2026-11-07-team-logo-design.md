@@ -149,8 +149,8 @@ should be made: no `data:` or `blob:` for images.
 
 - `salesReportPdf` takes an optional
   `logo: { jpeg: Uint8Array, width, height }`. With it, the report draws the
-  image top right, fitted inside about 60 × 60 pt and aligned with the
-  heading's top. The heading and the store-name line stay where they are, and
+  image top right, fitted inside 160 × 48 pt (wide enough for a banner, low
+  enough to clear the total below) and aligned with the heading's top. The heading and the store-name line stay where they are, and
   the store name is never overlapped. Without it, the output is byte-for-byte
   what it is today.
 - The image is embedded as a JPEG with `/Filter /DCTDecode`, an Image XObject

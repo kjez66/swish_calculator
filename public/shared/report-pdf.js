@@ -23,8 +23,12 @@ const TOP = 785;
 /** Rows stop above this; the footer goes below it, on the last page. */
 const ROWS_BOTTOM = 72;
 const ROW_HEIGHT = 18;
-/** The kassa's logo, top right, is fitted inside a square this wide. */
-const LOGO_BOX = 56;
+/**
+ * The box the kassa's logo, top right, is fitted inside: low enough to clear
+ * the total below it, wide enough that a banner is not shrunk to a sliver.
+ */
+const LOGO_MAX_W = 160;
+const LOGO_MAX_H = 48;
 /** The logo's top edge: level with the top of the heading's capitals. */
 const LOGO_TOP = 799;
 /** The least room left between the subtitle and the logo. */
@@ -184,13 +188,13 @@ export function salesReportPdf({ storeName, date, summary, createdAt, logo }) {
 
   let subtitle = storeName ? `${storeName} · ${date}` : date;
   if (logo) {
-    const scale = LOGO_BOX / Math.max(logo.width, logo.height);
+    const scale = Math.min(LOGO_MAX_W / logo.width, LOGO_MAX_H / logo.height);
     const w = logo.width * scale;
     const h = logo.height * scale;
     ops.push(
       `q ${num(w)} 0 0 ${num(h)} ${num(RIGHT - w)} ${num(LOGO_TOP - h)} cm /Im1 Do Q`,
     );
-    subtitle = fitWidth(subtitle, "F1", 12, RIGHT - LOGO_BOX - LOGO_GAP - LEFT);
+    subtitle = fitWidth(subtitle, "F1", 12, RIGHT - w - LOGO_GAP - LEFT);
   }
   text("Försäljning", "F2", 20, LEFT, y);
   y -= 24;

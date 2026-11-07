@@ -257,7 +257,7 @@ test("with a logo, the first page draws it as an embedded JPEG, top right", () =
     objects.get(Number(/\/Contents (\d+) 0 R/.exec(firstPage)[1])),
   );
   const [, w, h, x, y] = DRAW.exec(contents).map(Number);
-  expect([w, h]).toEqual([56, 28]);
+  expect([w, h]).toEqual([96, 48]);
   expect(x + w).toBeCloseTo(538.59, 2);
   expect(y + h).toBeCloseTo(799, 2);
 });
@@ -265,7 +265,7 @@ test("with a logo, the first page draws it as an embedded JPEG, top right", () =
 test("a tall logo is fitted to the box by its height", () => {
   const pdf = raw({ jpeg: JPEG, width: 50, height: 200 });
   const [, w, h] = DRAW.exec(pdf).map(Number);
-  expect([w, h]).toEqual([14, 56]);
+  expect([w, h]).toEqual([12, 48]);
 });
 
 test("the logo is drawn on the first page only", () => {
@@ -290,7 +290,7 @@ test("a long store name stops short of the logo", () => {
   const sub = pages[0].find((t) => t.text.startsWith("Föreningen"));
   expect(sub.text.endsWith("…")).toBe(true);
   expect(sub.x + textWidth(sub.text, sub.font, sub.size)).toBeLessThanOrEqual(
-    538.59 - 56 - 12,
+    538.59 - 48 - 12,
   );
 });
 
@@ -299,5 +299,28 @@ test("without a logo the file has no image", () => {
   expect(without).not.toContain("/XObject");
   expect(without).toBe(
     bytesToString(salesReportPdf({ ...ARGS, summary: summarizeSales(SALES) })),
+  );
+});
+
+test("a wide logo is fitted to the box by its width, up to 160 pt", () => {
+  const pdf = raw({ jpeg: JPEG, width: 2000, height: 200 });
+  const [, w, h, x] = DRAW.exec(pdf).map(Number);
+  expect([w, h]).toEqual([160, 16]);
+  expect(x + w).toBeCloseTo(538.59, 2);
+});
+
+test("the store name stops short of a wide logo's left edge", () => {
+  const long = "Föreningen med det väldigt långa namnet som inte tar slut";
+  const pages = readPages(
+    salesReportPdf({
+      ...ARGS,
+      storeName: long,
+      summary: summarizeSales(SALES),
+      logo: { jpeg: JPEG, width: 2000, height: 200 },
+    }),
+  );
+  const sub = pages[0].find((t) => t.text.startsWith("Föreningen"));
+  expect(sub.x + textWidth(sub.text, sub.font, sub.size)).toBeLessThanOrEqual(
+    538.59 - 160 - 12,
   );
 });
