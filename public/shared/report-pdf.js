@@ -4,6 +4,8 @@
  * which would add 300-500 KB for every phone to download. It uses Helvetica, one
  * of the fonts every PDF reader has built in, in WinAnsiEncoding: Swedish
  * letters, é, ×, – and the like print, and anything else prints as "?".
+ * The kassa's logo, when it has one, comes in as a JPEG, which PDF readers
+ * decode themselves (/DCTDecode), so this writer needs no image code.
  * @module
  */
 
@@ -21,6 +23,12 @@ const TOP = 785;
 /** Rows stop above this; the footer goes below it, on the last page. */
 const ROWS_BOTTOM = 72;
 const ROW_HEIGHT = 18;
+/** The kassa's logo, top right, is fitted inside a square this wide. */
+const LOGO_BOX = 56;
+/** The logo's top edge: level with the top of the heading's capitals. */
+const LOGO_TOP = 799;
+/** The least room left between the subtitle and the logo. */
+const LOGO_GAP = 12;
 
 const NOTE =
   "Visar köp som markerats Klar. Appen kan inte se om pengarna kom fram, så stäm av mot din Swish-app.";
@@ -154,9 +162,11 @@ const createdFormat = new Intl.DateTimeFormat("sv-SE", {
  *   summary: {count: number, totalOre: number,
  *     products: {name: string, qty: number, totalOre: number}[]}}} report
  *   date is YYYY-MM-DD; summary is what summarizeSales returns
+ * @param {{jpeg: Uint8Array, width: number, height: number}} [report.logo]
+ *   the kassa's logo as JPEG bytes and its size in pixels, drawn top right
  * @returns {Uint8Array}
  */
-export function salesReportPdf({ storeName, date, summary, createdAt }) {
+export function salesReportPdf({ storeName, date, summary, createdAt, logo }) {
   const pages = [];
   let ops = [];
   let y = TOP;
@@ -172,9 +182,19 @@ export function salesReportPdf({ storeName, date, summary, createdAt }) {
     y -= 24;
   };
 
+  let subtitle = storeName ? `${storeName} · ${date}` : date;
+  if (logo) {
+    const scale = LOGO_BOX / Math.max(logo.width, logo.height);
+    const w = logo.width * scale;
+    const h = logo.height * scale;
+    ops.push(
+      `q ${num(w)} 0 0 ${num(h)} ${num(RIGHT - w)} ${num(LOGO_TOP - h)} cm /Im1 Do Q`,
+    );
+    subtitle = fitWidth(subtitle, "F1", 12, RIGHT - LOGO_BOX - LOGO_GAP - LEFT);
+  }
   text("Försäljning", "F2", 20, LEFT, y);
   y -= 24;
-  text(storeName ? `${storeName} · ${date}` : date, "F1", 12, LEFT, y);
+  text(subtitle, "F1", 12, LEFT, y);
   y -= 34;
   text(`${summary.count} köp`, "F1", 14, LEFT, y);
   rightAligned(`${formatOre(summary.totalOre)} kr`, "F2", 14, RIGHT, y);
@@ -197,15 +217,18 @@ export function salesReportPdf({ storeName, date, summary, createdAt }) {
   text(`Skapad ${createdFormat.format(new Date(createdAt))}`, "F1", 9, LEFT, 40);
   ops.push("0 g");
   pages.push(ops);
-  return pdfFile(pages);
+  return pdfFile(pages, logo);
 }
 
 /**
  * A PDF file of pages drawn with F1 and F2: catalog, page tree, the two fonts,
- * then a page and its content stream per page, and the cross-reference table.
- * Every character is one byte, so string length is byte offset.
+ * then a page and its content stream per page, the logo's image if there is
+ * one (last, so the numbering above is the same either way), and the
+ * cross-reference table. Every character is one byte, so string length is
+ * byte offset, the JPEG's included.
  */
-function pdfFile(pages) {
+function pdfFile(pages, image) {
+  const imageId = 5 + 2 * pages.length;
   const kids = pages.map((_, i) => `${5 + 2 * i} 0 R`).join(" ");
   const font = (name) =>
     `<< /Type /Font /Subtype /Type1 /BaseFont /${name} /Encoding /WinAnsiEncoding >>`;
@@ -217,12 +240,27 @@ function pdfFile(pages) {
   ];
   pages.forEach((ops, i) => {
     const stream = ops.join("\n");
+    // Only the first page draws the logo.
+    const xobject = image && i === 0 ? ` /XObject << /Im1 ${imageId} 0 R >>` : "";
     objects.push(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}]` +
-        ` /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${6 + 2 * i} 0 R >>`,
+        ` /Resources << /Font << /F1 3 0 R /F2 4 0 R >>${xobject} >>` +
+        ` /Contents ${6 + 2 * i} 0 R >>`,
       `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     );
   });
+  if (image) {
+    let data = "";
+    // In chunks: spreading a whole JPEG into one call can overflow the stack.
+    for (let i = 0; i < image.jpeg.length; i += 8192) {
+      data += String.fromCharCode(...image.jpeg.subarray(i, i + 8192));
+    }
+    objects.push(
+      `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height}` +
+        ` /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode` +
+        ` /Length ${image.jpeg.length} >>\nstream\n${data}\nendstream`,
+    );
+  }
   // The second line's bytes above 127 mark the file as binary for transfer tools.
   let out = `%PDF-1.4\n%${String.fromCharCode(0xe2, 0xe3, 0xcf, 0xd3)}\n`;
   const offsets = objects.map((body, i) => {

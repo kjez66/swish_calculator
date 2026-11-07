@@ -212,3 +212,92 @@ test("textWidth measures in Helvetica's metrics", () => {
   expect(textWidth("i", "F2", 10)).toBeCloseTo(2.78);
   expect(textWidth("ö", "F1", 10)).toBeCloseTo(5.56);
 });
+
+// --- the team logo -------------------------------------------------------------
+
+// Bytes a careless writer would break: newline, ( ) \ and bytes above 127.
+const JPEG = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x0a, 0x28, 0x29, 0x5c, 0x80, 0xff, 0xd9,
+]);
+const ARGS = { storeName: "Kiosken", date: "2026-10-11", createdAt: CREATED };
+
+test("without a logo the bytes are exactly today's", async () => {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    salesReportPdf({ ...ARGS, summary: summarizeSales(SALES) }),
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  expect(hex).toBe("29912cbe6e4f2d2dc058072deeee3807c209e58d097ee16deb803f2b1e8f1f48");
+});
+
+const raw = (logo, summary = summarizeSales(SALES), storeName = "Kiosken") =>
+  bytesToString(salesReportPdf({ ...ARGS, storeName, summary, logo }));
+const DRAW = /^q ([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm \/Im1 Do Q$/m;
+
+test("with a logo, the first page draws it as an embedded JPEG, top right", () => {
+  const pdf = raw({ jpeg: JPEG, width: 200, height: 100 });
+  const objects = readObjects(pdf);
+  const [id, image] = [...objects].find(([, o]) => o.includes("/Subtype /Image"));
+  for (const part of [
+    "/Type /XObject",
+    "/Width 200",
+    "/Height 100",
+    "/ColorSpace /DeviceRGB",
+    "/BitsPerComponent 8",
+    "/Filter /DCTDecode",
+  ]) {
+    expect(image).toContain(part);
+  }
+  expect(streamData(image)).toBe(bytesToString(JPEG));
+  const firstPage = objects.get(Number(/\/Kids \[(\d+) 0 R/.exec(objects.get(2))[1]));
+  expect(firstPage).toContain(`/XObject << /Im1 ${id} 0 R >>`);
+  const contents = streamData(
+    objects.get(Number(/\/Contents (\d+) 0 R/.exec(firstPage)[1])),
+  );
+  const [, w, h, x, y] = DRAW.exec(contents).map(Number);
+  expect([w, h]).toEqual([56, 28]);
+  expect(x + w).toBeCloseTo(538.59, 2);
+  expect(y + h).toBeCloseTo(799, 2);
+});
+
+test("a tall logo is fitted to the box by its height", () => {
+  const pdf = raw({ jpeg: JPEG, width: 50, height: 200 });
+  const [, w, h] = DRAW.exec(pdf).map(Number);
+  expect([w, h]).toEqual([14, 56]);
+});
+
+test("the logo is drawn on the first page only", () => {
+  const products = Array.from({ length: 90 }, (_, i) => line(`p${i}`, `P ${i}`, 100, 1));
+  const summary = summarizeSales([{ orderNo: 1, totalOre: 9000, lines: products }]);
+  const pdf = raw({ jpeg: JPEG, width: 10, height: 10 }, summary);
+  expect(pdf.match(/\/Im1 Do/g)).toHaveLength(1);
+  expect(pdf.match(/\/Subtype \/Image/g)).toHaveLength(1);
+  expect(pdf.match(/\/XObject <</g)).toHaveLength(1);
+});
+
+test("a long store name stops short of the logo", () => {
+  const long = "Föreningen med det väldigt långa namnet som inte tar slut i första taget";
+  const pages = readPages(
+    salesReportPdf({
+      ...ARGS,
+      storeName: long,
+      summary: summarizeSales(SALES),
+      logo: { jpeg: JPEG, width: 1, height: 1 },
+    }),
+  );
+  const sub = pages[0].find((t) => t.text.startsWith("Föreningen"));
+  expect(sub.text.endsWith("…")).toBe(true);
+  expect(sub.x + textWidth(sub.text, sub.font, sub.size)).toBeLessThanOrEqual(
+    538.59 - 56 - 12,
+  );
+});
+
+test("without a logo the file has no image", () => {
+  const without = raw(undefined);
+  expect(without).not.toContain("/XObject");
+  expect(without).toBe(
+    bytesToString(salesReportPdf({ ...ARGS, summary: summarizeSales(SALES) })),
+  );
+});
