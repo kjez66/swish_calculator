@@ -196,10 +196,26 @@ function showQrTeamLogo() {
   const img = $("qrTeamLogo");
   if ((img.getAttribute("src") ?? null) === logoUrl) return;
   img.hidden = true;
-  img.onload = () => (img.hidden = false);
-  img.onerror = () => (img.hidden = true);
+  img.onload = () => {
+    img.hidden = false;
+    qrLogoFailed = false;
+  };
+  img.onerror = () => {
+    img.hidden = true;
+    qrLogoFailed = true;
+  };
   if (logoUrl) img.src = logoUrl;
   else img.removeAttribute("src");
+}
+// Whether the logo above failed to load. It is tried again when the connection
+// is back (not on every render: a gone logo would be fetched on every tap), so
+// a moment without network does not lose it for the day.
+let qrLogoFailed = false;
+function retryQrTeamLogo() {
+  if (!qrLogoFailed) return;
+  qrLogoFailed = false;
+  $("qrTeamLogo").removeAttribute("src");
+  showQrTeamLogo();
 }
 
 function escapeHtml(s) {
@@ -972,6 +988,7 @@ async function connect() {
     // and its Klar/Avbryt. Without it the display keeps a payable QR that
     // nothing on this page can clear.
     ws.send("hello");
+    retryQrTeamLogo();
     timer = setInterval(() => {
       if (!alive) return restart();
       alive = false;
@@ -1017,6 +1034,7 @@ async function refresh() {
   settings = state.settings;
   products = state.products;
   logoUrl = state.logoUrl ?? null;
+  retryQrTeamLogo();
   stateLoaded = true;
   for (const id of [...basket.keys()]) {
     if (!products.some((p) => p.id === id && isEnabled(p))) basket.delete(id);

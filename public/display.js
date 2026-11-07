@@ -204,10 +204,15 @@
 
   // Each logo stays hidden until it has loaded, and hides again if it fails
   // (a replaced logo's old URL is gone): never a broken image for a customer.
+  // A failed load is tried again on the next room event (every reconnect sends
+  // one), so a moment without network does not lose the logo for the day.
+  var logoFailed = false;
+
   function setLogo(url) {
     url = url || null;
-    if (url === logoUrl) return;
+    if (url === logoUrl && !logoFailed) return;
     logoUrl = url;
+    logoFailed = false;
     thanksLogoShown = false;
     showThanksName();
     var imgs = document.querySelectorAll(".team-logo");
@@ -227,6 +232,7 @@
     };
     img.onerror = function () {
       img.hidden = true;
+      logoFailed = true;
       if (onThanks) {
         thanksLogoShown = false;
         showThanksName();
