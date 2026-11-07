@@ -3,3 +3,5 @@ node_modules/
 *.log
 .wrangler/
 README.local.md
+# Brainstorming mockups and plan-execution scratch from Claude Code.
+.superpowers/
