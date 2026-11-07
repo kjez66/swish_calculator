@@ -133,7 +133,7 @@ Försäljningen sparas i 31 dagar och tas sedan bort automatiskt.
 ## Bra att veta
 
 - **Kassan kan inte se om kunden har betalat.** Swish berättar inte det för den.
-  ”Klar” betyder att *du* har sett pengarna komma in i din egen Swish-app. Kontrollera
+  ”Klar” betyder att _du_ har sett pengarna komma in i din egen Swish-app. Kontrollera
   alltid innan du trycker.
 - **Gör ett testköp före den första riktiga försäljningen.** Slå in ett litet köp, skanna
   koden med din egen Swish-app och kontrollera att numret, beloppet och meddelandet
@@ -157,7 +157,7 @@ får veta när det kommer säkerhetsrättningar står i [säkerhetspolicyn](SECU
 Uppdatera en dag då du inte säljer, och gör ett testköp efteråt.
 
 **Första gången: koppla kassan till en fork.** Kopian som Cloudflare gjorde i steg 1 kan
-inte hämta nya versioner. Det kan en *fork*: en kopia som GitHub håller ihop med det här
+inte hämta nya versioner. Det kan en _fork_: en kopia som GitHub håller ihop med det här
 projektet. Kassan behåller sin adress, sina inställningar och sin försäljning. Det enda
 som ändras är varifrån Cloudflare hämtar koden.
 
@@ -204,15 +204,15 @@ och den direkta WebSocket-anslutningen till displayen) och en gemensam katalog f
 kopplingskoder och begränsning av antal anrop. Kundens display (`public/display.js`)
 hålls i ES5 så att den fungerar på gamla mobiler; ett test ser till det.
 
-| Sökväg | Vad |
-|---|---|
-| `public/` | De två sidorna, som statiska filer: `index.html` och `app.js` (kassan), `display.html` och `display.js` (kundens display) |
-| `public/shared/` | Kod för belopp, Swish-QR-innehåll, försäljningssammanställning och PDF-rapport, delad med servern |
-| `public/_headers` | Säkerhetshuvuden för de statiska filerna |
-| `src/` | Worker och Durable Objects |
-| `src/defaults.js` | Exempelmenyn som en ny kassa börjar med |
-| `tests/` | Tester, körs med `npm test` |
-| `wrangler.jsonc` | Cloudflare-inställningar |
+| Sökväg            | Vad                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `public/`         | De två sidorna, som statiska filer: `index.html` och `app.js` (kassan), `display.html` och `display.js` (kundens display) |
+| `public/shared/`  | Kod för belopp, Swish-QR-innehåll, försäljningssammanställning och PDF-rapport, delad med servern                         |
+| `public/_headers` | Säkerhetshuvuden för de statiska filerna                                                                                  |
+| `src/`            | Worker och Durable Objects                                                                                                |
+| `src/defaults.js` | Exempelmenyn som en ny kassa börjar med                                                                                   |
+| `tests/`          | Tester, körs med `npm test`                                                                                               |
+| `wrangler.jsonc`  | Cloudflare-inställningar                                                                                                  |
 
 Formatet för QR-kodens innehåll är dokumenterat av användare, inte publicerat av
 Getswish. Testerna visar att appen skapar den text den ska, men inte att Swish godtar
