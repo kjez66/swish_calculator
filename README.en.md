@@ -136,7 +136,7 @@ Sales are kept for 31 days, then deleted automatically.
 ## Good to know
 
 - **The till cannot see whether a customer has paid.** Swish doesn't tell it. "Klar"
-  means *you* saw the money arrive in your own Swish app. Always check before you press
+  means _you_ saw the money arrive in your own Swish app. Always check before you press
   it.
 - **Do a test purchase before your first real sale.** Make a small sale, scan the code
   with your own Swish app, and check that the number, the amount and the note are right.
@@ -160,7 +160,7 @@ Your till doesn't update itself: when a new version comes out, you fetch it. The
 are not selling, and make a test purchase afterwards.
 
 **The first time: connect your till to a fork.** The copy Cloudflare made in Step 1
-can't fetch new versions. A *fork* can: it is a copy that GitHub keeps linked to this
+can't fetch new versions. A _fork_ can: it is a copy that GitHub keeps linked to this
 project. Your till keeps its address, its settings and its sales. All that changes is
 where Cloudflare gets the code from.
 
@@ -206,15 +206,15 @@ WebSocket connection to the display) and one shared directory for pairing codes 
 rate limits. The customer display (`public/display.js`) is kept in ES5 so it runs on
 old phones; a test enforces that.
 
-| Path | What |
-|---|---|
-| `public/` | The two pages, served as static files: `index.html` and `app.js` (the till), `display.html` and `display.js` (the customer display) |
-| `public/shared/` | Money, Swish QR payload, sales summary and PDF report code, shared with the server |
-| `public/_headers` | Security headers for the static files |
-| `src/` | The Worker and the Durable Objects |
-| `src/defaults.js` | The example menu a new till starts with |
-| `tests/` | Tests, run with `npm test` |
-| `wrangler.jsonc` | Cloudflare configuration |
+| Path              | What                                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `public/`         | The two pages, served as static files: `index.html` and `app.js` (the till), `display.html` and `display.js` (the customer display) |
+| `public/shared/`  | Money, Swish QR payload, sales summary and PDF report code, shared with the server                                                  |
+| `public/_headers` | Security headers for the static files                                                                                               |
+| `src/`            | The Worker and the Durable Objects                                                                                                  |
+| `src/defaults.js` | The example menu a new till starts with                                                                                             |
+| `tests/`          | Tests, run with `npm test`                                                                                                          |
+| `wrangler.jsonc`  | Cloudflare configuration                                                                                                            |
 
 The QR payload format is community-documented, not published by Getswish. The tests
 prove the app produces the string it intends to, but not that Swish accepts it; the test
