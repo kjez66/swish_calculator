@@ -12,7 +12,11 @@ export const newIp = () => `198.51.${Math.floor(++ipSeq / 250)}.${ipSeq % 250}`;
  * @param {{token?: string, body?: unknown, raw?: Uint8Array, ip?: string,
  *   headers?: object}} [options]
  */
-export function call(method, path, { token, body, raw, ip = newIp(), headers = {} } = {}) {
+export function call(
+  method,
+  path,
+  { token, body, raw, ip = newIp(), headers = {} } = {},
+) {
   return exports.default.fetch(`https://kassa.test${path}`, {
     method,
     headers: {
