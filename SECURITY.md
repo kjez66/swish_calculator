@@ -21,11 +21,11 @@ Helpful things to include:
 
 This is a small volunteer project, so these are aims rather than guarantees:
 
-| | |
-|---|---|
-| First reply | within 7 days |
-| Fix for a serious issue | within 30 days |
-| Public advisory | when the fix is on `master`, agreed with you |
+|                         |                                              |
+| ----------------------- | -------------------------------------------- |
+| First reply             | within 7 days                                |
+| Fix for a serious issue | within 30 days                               |
+| Public advisory         | when the fix is on `master`, agreed with you |
 
 You will be credited in the advisory unless you would rather not be.
 
