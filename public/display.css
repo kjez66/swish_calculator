@@ -307,6 +307,12 @@ main > form {
   #charge .team-logo {
     align-self: end;
   }
+  /* No logo: it is display:none, not a grid item, so the name takes its row
+     and sits at that row's foot, exactly where it always has. */
+  #charge .team-logo[hidden] + .brand {
+    grid-area: teamlogo;
+    align-self: end;
+  }
   .amount {
     font-size: 40px;
     font-size: clamp(28px, 7vw, 72px);
