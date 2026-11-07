@@ -8,18 +8,21 @@ export const newIp = () => `198.51.${Math.floor(++ipSeq / 250)}.${ipSeq % 250}`;
  * Call the Worker the way a browser on the internet would.
  * @param {string} method
  * @param {string} path
- * @param {{token?: string, body?: unknown, ip?: string, headers?: object}} [options]
+ * `raw` is sent as-is, as a PNG (the logo upload); `body` as JSON.
+ * @param {{token?: string, body?: unknown, raw?: Uint8Array, ip?: string,
+ *   headers?: object}} [options]
  */
-export function call(method, path, { token, body, ip = newIp(), headers = {} } = {}) {
+export function call(method, path, { token, body, raw, ip = newIp(), headers = {} } = {}) {
   return exports.default.fetch(`https://kassa.test${path}`, {
     method,
     headers: {
       "CF-Connecting-IP": ip,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(raw !== undefined ? { "Content-Type": "image/png" } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
 }
 

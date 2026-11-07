@@ -9,7 +9,7 @@ import {
 } from "../public/shared/swish.js";
 import { stockholmDate } from "./dates.js";
 import { defaultProducts } from "./defaults.js";
-import { bearer, fail, json } from "./http.js";
+import { bearer, fail, json, png } from "./http.js";
 import { toSvg } from "./qr.js";
 import { render } from "./render.js";
 import { hashToken, randomToken, safeEqual } from "./tokens.js";
@@ -33,6 +33,9 @@ const PRESENCE_TIMEOUT_MS = 45_000;
 const DISPLAY_SOCKETS_PER_TOKEN = 2;
 const DISPLAY_SOCKETS_PER_ROOM = 32;
 const HELLO_INTERVAL_MS = 5000;
+/** The till re-encodes a logo to at most 512 px, far below this. */
+const LOGO_MAX_BYTES = 256 * 1024;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 /** Zero-padded, so storage's key order is order-number order. */
 const saleKey = (date, orderNo) => `sale:${date}:${String(orderNo).padStart(6, "0")}`;
@@ -43,7 +46,8 @@ const saleKey = (date, orderNo) => `sale:${date}:${String(orderNo).padStart(6, "
  *
  * Storage keys: "room", "settings", "products", "current", "open-sale",
  * "counter:<date>", "charge:<chargeId>", "ticket:<ticket>",
- * "sale:<date>:<orderNo, 6 digits>".
+ * "sale:<date>:<orderNo, 6 digits>", and "logo" ({png: ArrayBuffer, version},
+ * optional and never purged).
  */
 export class Kassa extends DurableObject {
   /** Test seam: the clock. */
@@ -221,8 +225,7 @@ export class Kassa extends DurableObject {
         // Persist before any await, so concurrent messages and hibernation
         // cannot bypass the throttle. Fresh sockets still replay immediately.
         ws.serializeAttachment({ ...attachment, helloAt: now });
-        const settings = await this.ctx.storage.get("settings");
-        this.#send([ws], "room", { storeName: settings?.storeName ?? null });
+        this.#send([ws], "room", await this.#roomEvent());
       }
       const current = (await this.ctx.storage.get("current")) ?? { state: "idle" };
       this.#send([ws], "state", render(current));
@@ -243,6 +246,23 @@ export class Kassa extends DurableObject {
     if (ws.deserializeAttachment().role === "display") {
       this.#sendPresence(this.ctx.getWebSockets("operator"));
     }
+  }
+
+  /**
+   * Where this kassa's logo is served, or null without one. The version in the
+   * URL makes a replaced logo a new URL, so browsers may cache each for good.
+   */
+  async #logoUrl() {
+    const logo = await this.ctx.storage.get("logo");
+    if (!logo) return null;
+    const room = await this.ctx.storage.get("room");
+    return `/api/logo?roomId=${room.roomId}&v=${logo.version}`;
+  }
+
+  /** Whose stall this is, for the displays: name and logo, always together. */
+  async #roomEvent() {
+    const settings = await this.ctx.storage.get("settings");
+    return { storeName: settings?.storeName ?? null, logoUrl: await this.#logoUrl() };
   }
 
   /** @param {WebSocket[]} sockets @param {string} event @param {object} data */
@@ -325,7 +345,42 @@ export class Kassa extends DurableObject {
       return json({
         settings: (await storage.get("settings")) ?? null,
         products: (await storage.get("products")) ?? [],
+        logoUrl: await this.#logoUrl(),
       });
+    }
+
+    if (path === "/api/logo" && method === "GET") {
+      // No token: an <img> cannot send one, and a team logo is not secret. The
+      // room id is still needed, and an old version is gone, not served.
+      const logo = await storage.get("logo");
+      if (!logo || url.searchParams.get("v") !== logo.version) {
+        return fail("not_found", 404);
+      }
+      return png(logo.png);
+    }
+
+    if (path === "/api/logo" && method === "PUT") {
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
+      const bytes = await request.arrayBuffer();
+      if (bytes.byteLength > LOGO_MAX_BYTES) return fail("logo_too_large", 413);
+      const head = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 8));
+      if (head.length < 8 || PNG_SIGNATURE.some((b, i) => head[i] !== b)) {
+        return fail("invalid_logo", 400);
+      }
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+      const version = [...digest.slice(0, 8)]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      await storage.put("logo", { png: bytes, version });
+      this.#send(this.ctx.getWebSockets("display"), "room", await this.#roomEvent());
+      return json({ version });
+    }
+
+    if (path === "/api/logo" && method === "DELETE") {
+      if (!(await this.#authorize(request, "operator"))) return fail("unauthorized", 401);
+      await storage.delete("logo");
+      this.#send(this.ctx.getWebSockets("display"), "room", await this.#roomEvent());
+      return json({ ok: true });
     }
 
     if (path === "/api/settings" && method === "PUT") {
@@ -342,7 +397,7 @@ export class Kassa extends DurableObject {
       // Store the normalized form so nothing downstream has to re-parse it.
       await storage.put("settings", { storeName, payeeNumber });
       // Open displays show the store name; let them update without a reconnect.
-      this.#send(this.ctx.getWebSockets("display"), "room", { storeName });
+      this.#send(this.ctx.getWebSockets("display"), "room", await this.#roomEvent());
       return json({ storeName, payeeNumber });
     }
 

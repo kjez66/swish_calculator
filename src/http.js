@@ -22,6 +22,21 @@ export function json(body, status = 200) {
   });
 }
 
+/**
+ * A kassa's logo. Its URL carries its version, so a new logo gets a new URL
+ * and this one can be cached for good.
+ * @param {ArrayBuffer} bytes
+ */
+export function png(bytes) {
+  return new Response(bytes, {
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      ...SECURITY_HEADERS,
+    },
+  });
+}
+
 /** @param {string} error @param {number} status @param {object} [extra] */
 export function fail(error, status, extra = {}) {
   return json({ error, ...extra }, status);

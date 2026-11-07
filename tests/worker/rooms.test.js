@@ -50,6 +50,7 @@ test("settings and products round-trip", async () => {
   expect(state).toEqual({
     settings: { storeName: "Kiosken", payeeNumber: "0701234567" },
     products,
+    logoUrl: null,
   });
 });
 

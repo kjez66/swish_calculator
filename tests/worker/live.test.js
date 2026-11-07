@@ -118,7 +118,7 @@ test("a display hello burst is ignored before replay and presence work", async (
       instance.webSocketMessage(ws, "hello"),
     ]);
   });
-  expect(await display.next("room")).toEqual({ storeName: "Kiosken" });
+  expect(await display.next("room")).toEqual({ storeName: "Kiosken", logoUrl: null });
   expect(await display.next("state")).toEqual({ state: "idle" });
   expect(await operator.next("presence")).toEqual({ displays: 1 });
   display.ws.send("ping");
@@ -132,7 +132,7 @@ test("a display hello burst is ignored before replay and presence work", async (
 test("hello replays the store name and the current state to a display", async () => {
   const { roomId, displayToken } = await withDisplay();
   const display = await openSocket(roomId, displayToken);
-  expect(await display.next("room")).toEqual({ storeName: "Kiosken" });
+  expect(await display.next("room")).toEqual({ storeName: "Kiosken", logoUrl: null });
   expect(await display.next("state")).toEqual({ state: "idle" });
 });
 
@@ -178,7 +178,7 @@ test("a new store name reaches open displays", async () => {
   await api("PUT", "/api/settings", {
     body: { storeName: "Nya kiosken", payeeNumber: "0701234567" },
   });
-  expect(await display.next("room")).toEqual({ storeName: "Nya kiosken" });
+  expect(await display.next("room")).toEqual({ storeName: "Nya kiosken", logoUrl: null });
 });
 
 test("a ticket works exactly once", async () => {
@@ -251,7 +251,7 @@ test("unknown messages are ignored", async () => {
   display.ws.send("ping");
   // Unknown messages leave the socket usable and send no extra response.
   expect(await display.nextRaw("pong")).toBe("pong");
-  expect(await display.next("room")).toEqual({ storeName: "Kiosken" });
+  expect(await display.next("room")).toEqual({ storeName: "Kiosken", logoUrl: null });
   expect(display.pending()).toBe(0);
   const operator = await openSocket(roomId, operatorToken);
   expect(await operator.next("presence")).toEqual({ displays: 1 });
