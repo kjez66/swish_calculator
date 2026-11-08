@@ -362,7 +362,9 @@ const categoryOptions = (selected) =>
 // that named row would fail as an invalid price.
 // Three lines per product, so the name gets the full width on a phone and the
 // price, reorder and delete buttons can all be 44px targets.
-// The third picks the category that tints the product's tile.
+// The third picks the category that tints the product's tile and holds the
+// delete button: on the price line it squeezed the price to one digit on a
+// 360px phone, and apart from ↑ ↓ it is harder to hit by mistake.
 // The "Aktiv" switch takes a product off the till without losing its name,
 // price and place, e.g. when the buns run out.
 function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
@@ -385,12 +387,12 @@ function productRow(p = { id: crypto.randomUUID(), name: "", priceOre: null }) {
     `<span class="unit" aria-hidden="true">kr</span>` +
     `<button class="icon-btn up" aria-label="Flytta upp" title="Flytta upp">↑</button>` +
     `<button class="icon-btn down" aria-label="Flytta ned" title="Flytta ned">↓</button>` +
-    `<button class="icon-btn del" aria-label="Ta bort produkt" title="Ta bort produkt">` +
-    `✕</button>` +
     `</div>` +
     `<div class="row"><span class="unit" aria-hidden="true">Kategori</span>` +
     `<select class="category" aria-label="Kategori">${categoryOptions(p.category)}</select>` +
-    `<span class="swatch" aria-hidden="true"></span></div>`;
+    `<span class="swatch" aria-hidden="true"></span>` +
+    `<button class="icon-btn del" aria-label="Ta bort produkt" title="Ta bort produkt">` +
+    `✕</button></div>`;
   // Moving or removing a row takes the pressed button out of the DOM, which
   // drops keyboard focus; keep it on the button (or, after a delete, on the
   // nearest remaining row) so the next key press does what the user expects.
