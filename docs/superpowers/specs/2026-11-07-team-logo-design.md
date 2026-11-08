@@ -216,3 +216,36 @@ should be made: no `data:` or `blob:` for images.
   - Download the PDF with and without a logo, and open it in a phone's viewer
     and in a desktop reader.
 - README (Swedish and English): the settings step mentions the optional logo.
+
+## Known issues (deferred)
+
+Found in the final review on 2026-11-07 and left for later by the owner on
+2026-11-08. None blocks a sale.
+
+Ones the operator could notice:
+
+- "Bilden är för stor." shows only after Spara, by which point the name and
+  products are already saved. The size could be checked when the picture is
+  picked.
+- A tap on "Ladda ner PDF" the instant the sales view opens waits for the logo's
+  JPEG first. iPhone Safari may then block the download, because the wait
+  breaks the link to the tap.
+- If the logo was changed on another phone, settings can show Byt bild and
+  Ta bort with no preview.
+
+Server only, low risk:
+
+- `PUT /api/logo` reads the whole body before checking its size. Only the
+  operator token can upload.
+- `#logoUrl()` loads the whole PNG just to read its `version`, on every
+  `/api/state`, every display hello (at most one per 5 s per display) and after
+  a `PUT` or `DELETE`. This happens inside the Durable Object. Only the URL goes
+  to the phones, and they download the picture once per version. Fix: keep the
+  version under its own storage key.
+
+Not checked yet:
+
+- The logo on a real phone, including an old phone used as a display.
+- The PDF opened in a phone's viewer.
+- Swish's clear-space rule beside its logo. It isn't in the repo, so 16 px was
+  used.
