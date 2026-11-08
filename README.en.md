@@ -223,6 +223,13 @@ The QR payload format is community-documented, not published by Getswish. The te
 prove the app produces the string it intends to, but not that Swish accepts it; the test
 purchase above is what proves that.
 
+## Support the project
+
+Swish Calculator is free and will stay that way. If you'd like to say thanks, you can
+buy me a coffee on Ko-fi:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F6S12AB5M6)
+
 ## License
 
 MIT, see [`LICENSE`](LICENSE). The Swish name and logo belong to Getswish AB and are

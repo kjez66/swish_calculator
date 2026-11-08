@@ -221,6 +221,13 @@ Formatet för QR-kodens innehåll är dokumenterat av användare, inte publicera
 Getswish. Testerna visar att appen skapar den text den ska, men inte att Swish godtar
 den; det är testköpet ovan som visar det.
 
+## Stöd projektet
+
+Swish-kalkylatorn är gratis och kommer att förbli det. Vill du tacka för den kan du
+bjuda på en kaffe via Ko-fi:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F6S12AB5M6)
+
 ## Licens
 
 MIT, se [`LICENSE`](LICENSE). Namnet Swish och Swish-logotypen tillhör Getswish AB och
