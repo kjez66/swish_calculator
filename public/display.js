@@ -208,8 +208,19 @@
   // one), so a moment without network does not lose the logo for the day.
   var logoFailed = false;
 
+  // Only this app's own logo path is loaded, rebuilt here from a fixed prefix:
+  // a message can then never point the <img> at another site or a script URL.
+  // The server only ever sends this shape (src/kassa.js); anything else is no logo.
+  function logoPath(url) {
+    var m = /^\/api\/logo\?roomId=([0-9a-f-]+)&v=([0-9a-f]+)$/.exec(url || "");
+    if (!m) return null;
+    return (
+      "/api/logo?roomId=" + encodeURIComponent(m[1]) + "&v=" + encodeURIComponent(m[2])
+    );
+  }
+
   function setLogo(url) {
-    url = url || null;
+    url = logoPath(url);
     if (url === logoUrl && !logoFailed) return;
     logoUrl = url;
     logoFailed = false;
